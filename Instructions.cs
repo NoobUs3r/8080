@@ -28,7 +28,7 @@ namespace _8080
                 if (operand1 == "M" && operand2 == "M")
                     return;
 
-                if (!IsAddressValid(mAddress))
+                if (!IsValueInOneByteRange(mAddress))
                 {
                     errorMessage = "ERROR: Invalid M hex address";
                     return;
@@ -72,12 +72,12 @@ namespace _8080
                 errorMessage = "ERROR: Invalid MVI operand value";
                 return;
             }
-
+            
             int operand2_Int = ConvertValueOperandToDecimal(operand2);
 
             if (!Chip.registers.ContainsKey(operand1) || // First operand must be register
                 operand2_Int == -1 || // Second operand must have correct value
-                !IsAddressValid(operand2_Int))
+                !IsValueInOneByteRange(operand2_Int))
             {
                 errorMessage = "ERROR: Invalid MVI operands";
                 return;
@@ -150,7 +150,8 @@ namespace _8080
             int highValue = highAndLowValues[0];
             int lowValue = highAndLowValues[1];
 
-            if (operand1 != "B" && operand1 != "D" && operand1 != "H") // First operand must be B, D or H
+            if (operand1 != "B" && operand1 != "D" && operand1 != "H" || // First operand must be B, D or H
+                !IsValueInOneByteRange(highValue) || !IsValueInOneByteRange(lowValue))
             {
                 errorMessage = "ERROR: Invalid LXI operands";
                 return;
@@ -164,8 +165,8 @@ namespace _8080
 
         public static int[] ExtractHighAndLowValues(int value)
         {
-            int high = value / 16;
-            int low = value - high * 16;
+            int high = value / 256;
+            int low = value - high * 256;
             return new int[] { high, low };
         }
 
@@ -179,7 +180,7 @@ namespace _8080
 
             int address = ConvertValueOperandToDecimal(text);
 
-            if (!IsAddressValid(address))
+            if (!IsValueInOneByteRange(address))
             {
                 errorMessage = "ERROR: Invalid LDA address";
                 return;
@@ -229,9 +230,9 @@ namespace _8080
             return -1;
         }
 
-        private static bool IsAddressValid(int address)
+        private static bool IsValueInOneByteRange(int value)
         {
-            if (address < 0 || address > 255)
+            if (value < 0 || value > 255)
                 return false;
 
             return true;

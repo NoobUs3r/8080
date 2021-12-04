@@ -8,7 +8,7 @@ namespace _8080
     {
         public static string errorMessage = string.Empty;
 
-        public static string CheckCodeForErrors(string code)
+        public static void CheckCodeForErrors(string code)
         {
             string codeUppercase = code.ToUpper();
             string[] lines = codeUppercase.Split(new string[] { "\r\n", "\r", "\n" },
@@ -22,6 +22,9 @@ namespace _8080
                 string lineRemainingPart = line;
                 string[] words = line.Split(" ");
 
+                if (line == string.Empty)
+                    continue;
+
                 for (int j = 0; j < words.Length; j++)
                 {
                     string word = words[j];
@@ -31,41 +34,27 @@ namespace _8080
                     // Check if LABEL
                     if (word.Contains(":"))
                     {
-                        IsLabelValid(word);
+                        if (!IsLabelValid(word))
+                        {
+                            errorMessage = "ERROR: Invalid label";
+                            return;
+                        }
 
-                        if (errorMessage != string.Empty)
-                            return errorMessage;
+                        continue;
                     }
                     // Check if instruction
-                    else if (FindInstructionMatch(word) != "NO MATCH")
-                    {
-                        InstructionMethod(word, lineRemainingPart);
-                        break;
-                    }
-                }
-
-                line = RemoveSpacesFromBeginning(line);
-                line = RemoveSpacesFromEnd(line);
-
-                if (line == string.Empty)
-                    continue;
-
-                IsLabelValid(line);
-
-                if (errorMessage != string.Empty)
-                    return errorMessage;
-
-                if (!ContainsValidInstruction(line))
-                {
-                    if (!line.Contains(":")) // Check if it is no a label
+                    else if (FindInstructionMatch(word) == "NO MATCH")
                     {
                         errorMessage = "ERROR: Invalid instruction";
-                        break;
+                        return;
                     }
+
+                    InstructionMethod(word, lineRemainingPart);
+                    break;
                 }
             }
 
-            return errorMessage;
+            return;
         }
 
         private static string RemoveCommentFromLine(string line)
@@ -86,32 +75,29 @@ namespace _8080
             return fullTextUpdated;
         }
 
-        private static void IsLabelValid(string line)
+        private static bool IsLabelValid(string word)
         {
-            if (!line.Contains(":"))
-                return;
+            if (!word.Contains(":"))
+                return false;
 
-            bool isErrorRaised = false;
-            int semicolonIndex = line.IndexOf(":");
-            string label = line.Substring(0, semicolonIndex);
-
+            int semicolonIndex = word.IndexOf(":");
+            string afterSemicolon = string.Empty;
+            string label = word.Substring(0, semicolonIndex);
             label = RemoveSpacesFromBeginning(label);
+            
+            if (semicolonIndex != word.Length)
+                afterSemicolon = word.Substring(semicolonIndex + 1);
 
-            if (label.EndsWith(" ") || // "LABEL :" is invalid
-                label == string.Empty ||
+            if (label == string.Empty ||
                 label.Contains(" ") || // LABEL can't have spaces inside
                 FindInstructionMatch(label) != "NO MATCH" ||
-                Char.IsDigit(label[0]))
+                Char.IsDigit(label[0]) ||
+                afterSemicolon != string.Empty)
             {
-                isErrorRaised = true;
+                return false;
             }
 
-            if (isErrorRaised)
-            {
-                errorMessage = "ERROR: Invalid label";
-            }
-
-            return;
+            return true;
         }
 
         private static void InstructionMethod(string instr, string text)
@@ -146,26 +132,8 @@ namespace _8080
             return line;
         }
 
-        private static bool ContainsValidInstruction(string str)
-        {
-            bool containsValidInst = false;
-
-            foreach (string instruction in Chip.instructions)
-            {
-                if (str.Contains(instruction))
-                {
-                    containsValidInst = true;
-                    break;
-                }
-            }
-
-            return containsValidInst;
-        }
-
         private static string FindInstructionMatch(string str)
         {
-            str = str.ToUpper();
-
             foreach (string instruction in Chip.instructions)
             {
                 if (str == instruction)
@@ -175,7 +143,7 @@ namespace _8080
             return "NO MATCH";
         }
 
-        public static void Clear()
+        public static void ClearErrorMessage()
         {
             errorMessage = string.Empty;
         }

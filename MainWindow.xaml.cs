@@ -68,7 +68,7 @@ namespace _8080
 
         private void RunButton_Click(object sender, RoutedEventArgs e)
         {
-            CodeParser.Clear();
+            CodeParser.ClearErrorMessage();
             CodeParser.CheckCodeForErrors(CodeBox.Text);
 
             if (CodeParser.errorMessage != string.Empty)
@@ -105,11 +105,7 @@ namespace _8080
             {
                 for (int j = 1; j < 17; j++)
                 {
-                    /*if (Chip.memory[m].Length == 1)
-                        dt.Rows[i][j] = "0" + Chip.memory[m];
-                    else*/
                     dt.Rows[i][j] = Chip.memory[m];
-
                     m++;
                 }
             }
@@ -133,40 +129,5 @@ namespace _8080
                 Chip.memory[i] = 0;
             }
         }
-
-        /*private void PopulateHexTable()
-        {
-            int cols = 16;
-            int rows = 17;
-            string[] columnHeaders = new string[] {" ", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
-                                                   "A", "B", "C", "D", "E", "F"};
-            string[] rowHeaders = new string[] {" ", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
-                                                "A", "B", "C", "D", "E", "F"};
-
-            for (int c = 0; c < cols; c++)
-                hexTable.Columns.Add(new DataGridTextColumn());
-
-            for (int r = 0; r < rows; r++)
-            {
-                DataGridRow tr = new DataGridRow();
-
-                for (int c = 0; c < cols; c++)
-                {
-                    if (c == 0)
-                        tr.Cells.Add(new TableCell(new Paragraph(new Run(rowHeaders[r]))));
-                    else
-                    {
-                        if (r == 0)
-                            tr.Cells.Add(new TableCell(new Paragraph(new Run(columnHeaders[c]))));
-                        else
-                            tr.Cells.Add(new TableCell(new Paragraph(new Run("00"))));
-                    }
-                }
-
-                TableRowGroup trg = new TableRowGroup();
-                trg.Rows.Add(tr);
-                hexTable.RowGroups.Add(trg);
-            }
-        }*/
     }
 }
