@@ -7,15 +7,15 @@ namespace _8080
 {
     static class Chip
     {
-        public static Dictionary<string, string> registers = new Dictionary<string, string>
+        public static Dictionary<string, int> registers = new Dictionary<string, int>
         {
-            { "A", "00" },
-            { "B", "00" },
-            { "C", "00" },
-            { "D", "00" },
-            { "E", "00" },
-            { "H", "00" },
-            { "L", "00" }
+            { "A", 0 },
+            { "B", 0 },
+            { "C", 0 },
+            { "D", 0 },
+            { "E", 0 },
+            { "H", 0 },
+            { "L", 0 }
         };
 
         public static string[] instructions =
@@ -102,6 +102,6 @@ namespace _8080
             "NOP"
         };
 
-        public static string[] memory = Enumerable.Repeat("00", 256).ToArray();
+        public static int[] memory = Enumerable.Repeat(0, 256).ToArray();
     }
 }

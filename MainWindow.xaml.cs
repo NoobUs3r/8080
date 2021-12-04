@@ -88,13 +88,13 @@ namespace _8080
 
         private void UpdateRegWindows()
         {
-            regA_Value.Text = Chip.registers["A"];
-            regB_Value.Text = Chip.registers["B"];
-            regC_Value.Text = Chip.registers["C"];
-            regD_Value.Text = Chip.registers["D"];
-            regE_Value.Text = Chip.registers["E"];
-            regH_Value.Text = Chip.registers["H"];
-            regL_Value.Text = Chip.registers["L"];
+            regA_Value.Text = Chip.registers["A"].ToString();
+            regB_Value.Text = Chip.registers["B"].ToString();
+            regC_Value.Text = Chip.registers["C"].ToString();
+            regD_Value.Text = Chip.registers["D"].ToString();
+            regE_Value.Text = Chip.registers["E"].ToString();
+            regH_Value.Text = Chip.registers["H"].ToString();
+            regL_Value.Text = Chip.registers["L"].ToString();
         }
 
         private void UpdateMemoryWindow()
@@ -105,10 +105,10 @@ namespace _8080
             {
                 for (int j = 1; j < 17; j++)
                 {
-                    if (Chip.memory[m].Length == 1)
+                    /*if (Chip.memory[m].Length == 1)
                         dt.Rows[i][j] = "0" + Chip.memory[m];
-                    else
-                        dt.Rows[i][j] = Chip.memory[m];
+                    else*/
+                    dt.Rows[i][j] = Chip.memory[m];
 
                     m++;
                 }
@@ -117,20 +117,20 @@ namespace _8080
 
         private void ClearRegValues()
         {
-            Chip.registers["A"] = "00";
-            Chip.registers["B"] = "00";
-            Chip.registers["C"] = "00";
-            Chip.registers["D"] = "00";
-            Chip.registers["E"] = "00";
-            Chip.registers["H"] = "00";
-            Chip.registers["L"] = "00";
+            Chip.registers["A"] = 0;
+            Chip.registers["B"] = 0;
+            Chip.registers["C"] = 0;
+            Chip.registers["D"] = 0;
+            Chip.registers["E"] = 0;
+            Chip.registers["H"] = 0;
+            Chip.registers["L"] = 0;
         }
 
         private void ClearMemoryValues()
         {
             for (int i = 0; i < Chip.memory.Length; i++)
             {
-                Chip.memory[i] = "00";
+                Chip.memory[i] = 0;
             }
         }
 

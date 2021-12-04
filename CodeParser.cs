@@ -31,7 +31,7 @@ namespace _8080
                     // Check if LABEL
                     if (word.Contains(":"))
                     {
-                        CheckIfLabelValid(word);
+                        IsLabelValid(word);
 
                         if (errorMessage != string.Empty)
                             return errorMessage;
@@ -50,7 +50,7 @@ namespace _8080
                 if (line == string.Empty)
                     continue;
 
-                CheckIfLabelValid(line);
+                IsLabelValid(line);
 
                 if (errorMessage != string.Empty)
                     return errorMessage;
@@ -59,7 +59,6 @@ namespace _8080
                 {
                     if (!line.Contains(":")) // Check if it is no a label
                     {
-                        // ERROR
                         errorMessage = "ERROR: Invalid instruction";
                         break;
                     }
@@ -83,14 +82,11 @@ namespace _8080
         private static string RemoveFirstOccurenceFromString(string valueToRemove, string fullText)
         {
             int index = fullText.IndexOf(valueToRemove);
-            string fullTextUpdated = (index < 0)
-                ? fullText
-                : fullText.Remove(index, valueToRemove.Length);
-
+            string fullTextUpdated = (index < 0) ? fullText : fullText.Remove(index, valueToRemove.Length);
             return fullTextUpdated;
         }
 
-        private static void CheckIfLabelValid(string line)
+        private static void IsLabelValid(string line)
         {
             if (!line.Contains(":"))
                 return;

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace _8080
 {
@@ -16,51 +15,47 @@ namespace _8080
             if (errorMessage != string.Empty)
                 return;
 
-            if (!(Chip.registers.ContainsKey(operand1) || operand1 == "M") || // Check if arg1 is register or M
-                !(Chip.registers.ContainsKey(operand2) || operand2 == "M")) // Check if arg2 is register or M
+            if (!IsOperandValid(operand1) || !IsOperandValid(operand2)) 
             {
                 errorMessage = "ERROR: Invalid MOV operands";
                 return;
             }
 
-            string hexAddressString = GetM();
-            int hexAddressDecimal = -1;
+            int mAddress = GetM();
 
             if (operand1 == "M" || operand2 == "M")
             {
                 if (operand1 == "M" && operand2 == "M")
                     return;
 
-                if (!CheckIfHexAddressValid(hexAddressString))
+                if (!IsAddressValid(mAddress))
                 {
                     errorMessage = "ERROR: Invalid M hex address";
                     return;
                 }
 
-                hexAddressString = hexAddressString[..^1];
-                hexAddressDecimal = ConvertHexToDecimal(hexAddressString);
-
                 if (operand1 == "M")
-                    Chip.memory[hexAddressDecimal] = Chip.registers.GetValueOrDefault(operand2);
+                    Chip.memory[mAddress] = Chip.registers.GetValueOrDefault(operand2);
                 else
-                    Chip.registers[operand1] = Chip.memory[hexAddressDecimal];
+                    Chip.registers[operand1] = Chip.memory[mAddress];
             }
             else
                 Chip.registers[operand1] = Chip.registers.GetValueOrDefault(operand2);
         }
 
-        private static string GetM()
+        private static bool IsOperandValid(string operand)
         {
-            string h = Chip.registers["H"];
-            string l = Chip.registers["H"];
+            if (Chip.registers.ContainsKey(operand) || operand == "M")
+                return true;
+            
+            return false;
+        }
 
-            if (h.Length == 2 && h.StartsWith("0"))
-                h = h[^1..];
-
-            if (l.Length == 2 && l.StartsWith("0"))
-                l = l[^1..];
-
-            return h + l + "H";
+        private static int GetM()
+        {
+            int h = Chip.registers["H"] * 16;
+            int l = Chip.registers["H"];
+            return h + l;
         }
 
         public static void MVI_Instr(string text, ref string errorMessage)
@@ -72,33 +67,67 @@ namespace _8080
             if (errorMessage != string.Empty)
                 return;
 
+            if (!IsValueOperandFormatValid(operand2))
+            {
+                errorMessage = "ERROR: Invalid MVI operand value";
+                return;
+            }
+
+            int operand2_Int = ConvertValueOperandToDecimal(operand2);
+
             if (!Chip.registers.ContainsKey(operand1) || // First operand must be register
-                !CheckIfHex(operand2)) // Second operand must be hex
+                operand2_Int == -1 || // Second operand must have correct value
+                !IsAddressValid(operand2_Int))
             {
                 errorMessage = "ERROR: Invalid MVI operands";
                 return;
             }
 
-            Remove_H_FromEndIfExists(operand2);
-            AppendZeroToBeginningIfSingleChar(operand2);
-
-            Chip.registers[operand1] = operand2;
+            Chip.registers[operand1] = operand2_Int;
         }
 
-        public static string AppendZeroToBeginningIfSingleChar(string str)
+        public static bool IsValueOperandFormatValid(string operand)
         {
-            if (str.Length == 1)
-                str = "0" + str;
+            if (operand.EndsWith("H"))
+            {
+                if (operand.StartsWith("0"))
+                    return true;
 
-            return str;
+                return false;
+            }
+            // Add other checks for bites, decimals etc
+            else if (operand.EndsWith("D"))
+            {
+                operand = operand[..^1];
+
+                if (Int32.TryParse(operand, out int value))
+                    return true;
+
+                return false;
+            }
+            else if (Int32.TryParse(operand, out int value))
+                return true;
+            else
+                return false;
         }
 
-        public static string Remove_H_FromEndIfExists(string str)
+        public static int ConvertValueOperandToDecimal(string operand)
         {
-            if (str.EndsWith("H"))
-                str = str[..^1];
+            if (operand.EndsWith("H"))
+                return ConvertHexToDecimal(operand);
+            else if (operand.EndsWith("D"))
+            {
+                operand = operand[..^1];
 
-            return str;
+                if (Int32.TryParse(operand, out int value))
+                    return value;
+
+                return -1;
+            }
+            else if (Int32.TryParse(operand, out int value))
+                return value; // Add other formats like bites etc
+            else
+                return -1;
         }
 
         public static void LXI_Instr(string text, ref string errorMessage)
@@ -110,10 +139,18 @@ namespace _8080
             if (errorMessage != string.Empty)
                 return;
 
-            string[] hexValues = SplitHexValues(operand2);
+            if (!IsValueOperandFormatValid(operand2))
+            {
+                errorMessage = "ERROR: Invalid LXI operand format";
+                return;
+            }
 
-            if ((operand1 != "B" && operand1 != "D" && operand1 != "H") || // First operand must be B, D or H
-                hexValues.Length == 0) // Error during SplitHexValues
+            int operand2_Int = ConvertValueOperandToDecimal(operand2);
+            int[] highAndLowValues = ExtractHighAndLowValues(operand2_Int);
+            int highValue = highAndLowValues[0];
+            int lowValue = highAndLowValues[1];
+
+            if (operand1 != "B" && operand1 != "D" && operand1 != "H") // First operand must be B, D or H
             {
                 errorMessage = "ERROR: Invalid LXI operands";
                 return;
@@ -121,49 +158,35 @@ namespace _8080
 
             string nextRegister = GetNextDictKey(operand1, Chip.registers);
 
-            if (hexValues.Length == 1)
-            {
-                Chip.registers[operand1] = "00";
+            Chip.registers[operand1] = highValue;
+            Chip.registers[nextRegister] = lowValue;
+        }
 
-                if (hexValues[0].Length == 1)
-                    Chip.registers[nextRegister] = "0" + hexValues[0];
-                else
-                    Chip.registers[nextRegister] = hexValues[0];
-            }
-            else
-            {
-                if (hexValues[0].Length == 1)
-                    Chip.registers[operand1] = "0" + hexValues[0];
-                else
-                    Chip.registers[operand1] = hexValues[0];
-
-                if (hexValues[1].Length == 1)
-                    Chip.registers[nextRegister] = "0" + hexValues[1];
-                else
-                    Chip.registers[nextRegister] = hexValues[1];
-            }
+        public static int[] ExtractHighAndLowValues(int value)
+        {
+            int high = value / 16;
+            int low = value - high * 16;
+            return new int[] { high, low };
         }
 
         public static void LDA_Instr(string text, ref string errorMessage)
         {
-            if (!CheckIfHex(text))
+            if (!IsValueOperandFormatValid(text))
             {
-                errorMessage = "ERROR: Invalid operand";
+                errorMessage = "ERROR: Invalid LDA operand format";
                 return;
             }
 
-            string hexString = text[..^1];
-            int hexAddress = ConvertHexToDecimal(hexString);
+            int address = ConvertValueOperandToDecimal(text);
 
-            if (hexAddress < 0 || hexAddress > 255)
+            if (!IsAddressValid(address))
             {
-                errorMessage = "ERROR: Invalid hex address";
+                errorMessage = "ERROR: Invalid LDA address";
                 return;
             }
 
-            string hexValueString = Chip.memory[hexAddress];
-
-            Chip.registers["A"] = hexValueString;
+            int addressValue = Chip.memory[address];
+            Chip.registers["A"] = addressValue;
         }
 
         private static string[] SplitOperands(string text, ref string errorMessage)
@@ -187,45 +210,7 @@ namespace _8080
             return new string[] { operand1, operand2 };
         }
 
-        private static string[] SplitHexValues(string text)
-        {
-            if (!CheckIfHex(text))
-                return new string[0];
-
-            text = text[..^1];
-
-            string firstHex = string.Empty;
-            string secondHex = string.Empty;
-
-            if (text.Length <= 2)
-                return new string[] { text };
-
-            return new string[] { text[..2], text[2..] };
-        }
-
-        private static bool CheckIfHex(IEnumerable<char> chars)
-        {
-            if (chars.Last() != 'H' || chars.Count() < 2 || chars.Count() > 5)
-                return false;
-
-            bool isHex;
-
-            for (int i = 0; i < chars.Count() - 1; i++)
-            {
-                char c = chars.ElementAt(i);
-
-                isHex = ((c >= '0' && c <= '9') ||
-                         (c >= 'a' && c <= 'f') ||
-                         (c >= 'A' && c <= 'F'));
-
-                if (!isHex)
-                    return false;
-            }
-
-            return true;
-        }
-
-        private static string GetNextDictKey(string key, Dictionary<string, string> dict)
+        private static string GetNextDictKey(string key, Dictionary<string, int> dict)
         {
             for (int i = 0; i < dict.Count; i++)
             {
@@ -238,28 +223,16 @@ namespace _8080
 
         private static int ConvertHexToDecimal(string hex)
         {
-            return int.Parse(hex.ToString(), System.Globalization.NumberStyles.HexNumber);
+            if (Int32.TryParse(hex.ToString(), System.Globalization.NumberStyles.HexNumber, null, out int value))
+                return value;
+
+            return -1;
         }
 
-        private static string ConvertDecimalToHex(int dec)
+        private static bool IsAddressValid(int address)
         {
-            return dec.ToString("X");
-        }
-
-        private static bool CheckIfHexAddressValid(string hexAddressString)
-        {
-            if (!CheckIfHex(hexAddressString))
-            {
+            if (address < 0 || address > 255)
                 return false;
-            }
-
-            hexAddressString = hexAddressString[..^1];
-            int hexAddress = ConvertHexToDecimal(hexAddressString);
-
-            if (hexAddress < 0 || hexAddress > 255)
-            {
-                return false;
-            }
 
             return true;
         }
