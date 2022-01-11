@@ -6,33 +6,17 @@ namespace _8080
 {
     class Instructions
     {
-        public static void MOV_Instr(string text, ref string errorMessage)
+        public static string MOV_Instr(string operand1, string operand2)
         {
-            string[] operands = SplitOperands(text, ref errorMessage);
-            string operand1 = operands[0];
-            string operand2 = operands[1];
-
-            if (errorMessage != string.Empty)
-                return;
-
-            if (!IsOperandValid(operand1) || !IsOperandValid(operand2)) 
-            {
-                errorMessage = "ERROR: Invalid MOV operands";
-                return;
-            }
-
             int mAddress = GetM();
 
             if (operand1 == "M" || operand2 == "M")
             {
                 if (operand1 == "M" && operand2 == "M")
-                    return;
+                    return "Success";
 
                 if (!IsValueInOneByteRange(mAddress))
-                {
-                    errorMessage = "ERROR: Invalid M hex address";
-                    return;
-                }
+                    return "ERROR: Invalid M hex address";
 
                 if (operand1 == "M")
                     Chip.memory[mAddress] = Chip.registers.GetValueOrDefault(operand2);
@@ -41,9 +25,11 @@ namespace _8080
             }
             else
                 Chip.registers[operand1] = Chip.registers.GetValueOrDefault(operand2);
+
+            return "Success";
         }
 
-        private static bool IsOperandValid(string operand)
+        public static bool IsOperandValid(string operand)
         {
             if (Chip.registers.ContainsKey(operand) || operand == "M")
                 return true;
@@ -58,32 +44,10 @@ namespace _8080
             return h + l;
         }
 
-        public static void MVI_Instr(string text, ref string errorMessage)
+        public static string MVI_Instr(string operand1, int operand2)
         {
-            string[] operands = SplitOperands(text, ref errorMessage);
-            string operand1 = operands[0];
-            string operand2 = operands[1];
-
-            if (errorMessage != string.Empty)
-                return;
-
-            if (!IsValueOperandFormatValid(operand2))
-            {
-                errorMessage = "ERROR: Invalid MVI operand value";
-                return;
-            }
-            
-            int operand2_Int = ConvertValueOperandToDecimal(operand2);
-
-            if (!Chip.registers.ContainsKey(operand1) || // First operand must be register
-                operand2_Int == -1 || // Second operand must have correct value
-                !IsValueInOneByteRange(operand2_Int))
-            {
-                errorMessage = "ERROR: Invalid MVI operands";
-                return;
-            }
-
-            Chip.registers[operand1] = operand2_Int;
+            Chip.registers[operand1] = operand2;
+            return "Success";
         }
 
         public static bool IsValueOperandFormatValid(string operand)
@@ -130,67 +94,59 @@ namespace _8080
                 return -1;
         }
 
-        public static void LXI_Instr(string text, ref string errorMessage)
+        public static string LXI_Instr(string operand1, int highValue, int lowValue)
         {
-            string[] operands = SplitOperands(text, ref errorMessage);
-            string operand1 = operands[0] == "M" ? "H" : operands[0];
-            string operand2 = operands[1];
-
-            if (errorMessage != string.Empty)
-                return;
-
-            if (!IsValueOperandFormatValid(operand2))
-            {
-                errorMessage = "ERROR: Invalid LXI operand format";
-                return;
-            }
-
-            int operand2_Int = ConvertValueOperandToDecimal(operand2);
-            int[] highAndLowValues = ExtractHighAndLowValues(operand2_Int);
-            int highValue = highAndLowValues[0];
-            int lowValue = highAndLowValues[1];
-
-            if (operand1 != "B" && operand1 != "D" && operand1 != "H" || // First operand must be B, D or H
-                !IsValueInOneByteRange(highValue) || !IsValueInOneByteRange(lowValue))
-            {
-                errorMessage = "ERROR: Invalid LXI operands";
-                return;
-            }
-
             string nextRegister = GetNextDictKey(operand1, Chip.registers);
 
             Chip.registers[operand1] = highValue;
             Chip.registers[nextRegister] = lowValue;
+            return "Success";
         }
 
         public static int[] ExtractHighAndLowValues(int value)
         {
-            int high = value / 256;
-            int low = value - high * 256;
+            int high = value / 16;
+            int low = value - high * 16;
             return new int[] { high, low };
         }
 
-        public static void LDA_Instr(string text, ref string errorMessage)
+        public static string LDA_Instr(int address)
         {
-            if (!IsValueOperandFormatValid(text))
-            {
-                errorMessage = "ERROR: Invalid LDA operand format";
-                return;
-            }
-
-            int address = ConvertValueOperandToDecimal(text);
-
-            if (!IsValueInOneByteRange(address))
-            {
-                errorMessage = "ERROR: Invalid LDA address";
-                return;
-            }
-
             int addressValue = Chip.memory[address];
             Chip.registers["A"] = addressValue;
+            return "Success";
         }
 
-        private static string[] SplitOperands(string text, ref string errorMessage)
+        public static string STA_Instr(int address)
+        {
+            int regA = Chip.registers["A"];
+            Chip.memory[address] = regA;
+            return "Success";
+        }
+
+        public static string LHLD_Instr(int address)
+        {
+            int nextAddress = address + 1;
+            int lowAddressValue = Chip.memory[address];
+            int highAddressValue = Chip.memory[nextAddress];
+
+            Chip.registers["L"] = lowAddressValue;
+            Chip.registers["H"] = highAddressValue;
+            return "Success";
+        }
+
+        public static string SHLD_Instr(int address)
+        {
+            int nextAddress = address + 1;
+            int lValue = Chip.registers["L"];
+            int hValue = Chip.registers["H"];
+
+            Chip.memory[address] = lValue;
+            Chip.memory[nextAddress] = hValue;
+            return "Success";
+        }
+
+        public static string[] SplitOperands(string text, ref string errorMessage)
         {
             string[] operands = text.Split(",");
 
@@ -230,7 +186,7 @@ namespace _8080
             return -1;
         }
 
-        private static bool IsValueInOneByteRange(int value)
+        public static bool IsValueInOneByteRange(int value)
         {
             if (value < 0 || value > 255)
                 return false;

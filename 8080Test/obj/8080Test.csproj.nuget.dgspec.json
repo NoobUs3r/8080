@@ -1,0 +1,154 @@
+{
+  "format": 1,
+  "restore": {
+    "C:\\Users\\MKochubei\\source\\repos\\8080\\8080Test\\8080Test.csproj": {}
+  },
+  "projects": {
+    "C:\\Users\\MKochubei\\source\\repos\\8080\\8080Test\\8080Test.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\MKochubei\\source\\repos\\8080\\8080Test\\8080Test.csproj",
+        "projectName": "8080Test",
+        "projectPath": "C:\\Users\\MKochubei\\source\\repos\\8080\\8080Test\\8080Test.csproj",
+        "packagesPath": "C:\\Users\\MKochubei\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\MKochubei\\source\\repos\\8080\\8080Test\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\MKochubei\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "netcoreapp3.1"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Users\\MKochubei\\source\\repos\\NuGet": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "netcoreapp3.1": {
+            "targetAlias": "netcoreapp3.1",
+            "projectReferences": {
+              "C:\\Users\\MKochubei\\source\\repos\\8080\\8080\\8080.csproj": {
+                "projectPath": "C:\\Users\\MKochubei\\source\\repos\\8080\\8080\\8080.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "netcoreapp3.1": {
+          "targetAlias": "netcoreapp3.1",
+          "dependencies": {
+            "Microsoft.NET.Test.Sdk": {
+              "target": "Package",
+              "version": "[16.5.0, )"
+            },
+            "NUnit": {
+              "target": "Package",
+              "version": "[3.13.2, )"
+            },
+            "NUnit3TestAdapter": {
+              "target": "Package",
+              "version": "[3.16.1, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            },
+            "Microsoft.WindowsDesktop.App.WPF": {
+              "privateAssets": "none"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.210\\RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Users\\MKochubei\\source\\repos\\8080\\8080\\8080.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\MKochubei\\source\\repos\\8080\\8080\\8080.csproj",
+        "projectName": "8080",
+        "projectPath": "C:\\Users\\MKochubei\\source\\repos\\8080\\8080\\8080.csproj",
+        "packagesPath": "C:\\Users\\MKochubei\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\MKochubei\\source\\repos\\8080\\8080\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\MKochubei\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "netcoreapp3.1"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Users\\MKochubei\\source\\repos\\NuGet": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "netcoreapp3.1": {
+            "targetAlias": "netcoreapp3.1",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "netcoreapp3.1": {
+          "targetAlias": "netcoreapp3.1",
+          "dependencies": {
+            "NUnit": {
+              "target": "Package",
+              "version": "[3.13.2, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            },
+            "Microsoft.WindowsDesktop.App.WPF": {
+              "privateAssets": "none"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.210\\RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

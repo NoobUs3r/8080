@@ -5,7 +5,7 @@ using System.Text;
 
 namespace _8080
 {
-    static class Chip
+    public static class Chip
     {
         public static Dictionary<string, int> registers = new Dictionary<string, int>
         {

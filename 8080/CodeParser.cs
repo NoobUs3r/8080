@@ -4,9 +4,11 @@ using System.Text;
 
 namespace _8080
 {
-    static class CodeParser
+    public static class CodeParser
     {
         public static string errorMessage = string.Empty;
+        public static string instruction = string.Empty;
+        public static string operands = string.Empty;
 
         public static void CheckCodeForErrors(string code)
         {
@@ -49,7 +51,8 @@ namespace _8080
                         return;
                     }
 
-                    InstructionMethod(word, lineRemainingPart);
+                    instruction = word;
+                    operands = lineRemainingPart;
                     break;
                 }
             }
@@ -98,18 +101,6 @@ namespace _8080
             }
 
             return true;
-        }
-
-        private static void InstructionMethod(string instr, string text)
-        {
-            if (instr == "MOV")
-                Instructions.MOV_Instr(text, ref errorMessage);
-            else if (instr == "MVI")
-                Instructions.MVI_Instr(text, ref errorMessage);
-            else if (instr == "LXI")
-                Instructions.LXI_Instr(text, ref errorMessage);
-            else if (instr == "LDA")
-                Instructions.LDA_Instr(text, ref errorMessage);
         }
 
         public static string RemoveSpacesFromBeginning(string line)
