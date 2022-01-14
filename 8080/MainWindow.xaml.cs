@@ -34,19 +34,18 @@ namespace _8080
         {
             dt = new DataTable("memoryTable");
 
-            int cols = 17;
-            int rows = 16;
             string[] columnHeaders = new string[] {"\\", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
                                                    "A", "B", "C", "D", "E", "F"};
-            string[] rowHeaders = new string[] {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
-                                                "A", "B", "C", "D", "E", "F"};
+
+            int cols = columnHeaders.Length;
+            int rows = 17;
 
             for (int i = 0; i < cols; i++)
             {
                 DataColumn col = new DataColumn(columnHeaders[i], typeof(string));
                 dt.Columns.Add(col);
             }
-
+            
             for (int j = 0; j < rows; j++)
             {
                 DataRow dr = dt.NewRow();
@@ -54,9 +53,7 @@ namespace _8080
                 for (int m = 0; m < cols; m++)
                 {
                     if (m == 0)
-                        dr[m] = rowHeaders[j];
-                    else
-                        dr[m] = " ";
+                        dr[m] = j.ToString("X");
                 }
 
                 dt.Rows.Add(dr);
@@ -68,127 +65,13 @@ namespace _8080
 
         private void RunButton_Click(object sender, RoutedEventArgs e)
         {
-            CodeParser.ClearErrorMessage();
-            CodeParser.CheckCodeForErrors(CodeBox.Text);
+            string parserMessage = CodeParser.CheckCodeForErrorsAndExecute(CodeBox.Text);
 
-            if (CodeParser.errorMessage != string.Empty)
-                MessageBox.Show(CodeParser.errorMessage);
-
-            string instructionMethodMessage = ExecuteInstructionMethod(CodeParser.instruction, CodeParser.operands);
-            
-            if (instructionMethodMessage != "Success")
-                MessageBox.Show(instructionMethodMessage);
+            if (parserMessage != "Success")
+                MessageBox.Show(parserMessage);
 
             UpdateRegWindows();
             UpdateMemoryWindow();
-        }
-        public static string ExecuteInstructionMethod(string instr, string text)
-        {
-            string errorMessage = string.Empty;
-
-            if (instr == "MOV")
-            {
-                string[] operands = Instructions.SplitOperands(text, ref errorMessage);
-                string operand1 = operands[0];
-                string operand2 = operands[1];
-
-                if (errorMessage != string.Empty)
-                    return errorMessage;
-                else if (!Instructions.IsOperandValid(operand1) || !Instructions.IsOperandValid(operand2))
-                    return "ERROR: Invalid MOV operands";
-
-                return Instructions.MOV_Instr(operand1, operand2);
-            }
-            else if (instr == "MVI")
-            {
-                string[] operands = Instructions.SplitOperands(text, ref errorMessage);
-                string operand1 = operands[0];
-                string operand2 = operands[1];
-                int operand2_Int = Instructions.ConvertValueOperandToDecimal(operand2);
-
-                if (errorMessage != string.Empty)
-                    return errorMessage;
-                else if (!Instructions.IsValueOperandFormatValid(operand2))
-                    return "ERROR: Invalid MVI operand value";
-                else if (!Chip.registers.ContainsKey(operand1) || // First operand must be register
-                         operand2_Int == -1 || // Second operand must have correct value
-                         !Instructions.IsValueInOneByteRange(operand2_Int))
-                    return "ERROR: Invalid MVI operands";
-
-                return Instructions.MVI_Instr(operand1, operand2_Int);
-            }
-            else if (instr == "LXI")
-            {
-                string[] operands = Instructions.SplitOperands(text, ref errorMessage);
-                string operand1 = operands[0] == "M" ? "H" : operands[0];
-                string operand2 = operands[1];
-
-                if (errorMessage != string.Empty)
-                    return errorMessage;
-                else if (!Instructions.IsValueOperandFormatValid(operand2))
-                    return "ERROR: Invalid LXI operand format";
-
-                int operand2_Int = Instructions.ConvertValueOperandToDecimal(operand2);
-                int[] highAndLowValues = Instructions.ExtractHighAndLowValues(operand2_Int);
-                int highValue = highAndLowValues[0];
-                int lowValue = highAndLowValues[1];
-
-                if (operand1 != "B" && operand1 != "D" && operand1 != "H" || // First operand must be B, D or H
-                    !Instructions.IsValueInOneByteRange(highValue) || !Instructions.IsValueInOneByteRange(lowValue))
-                {
-                    return "ERROR: Invalid LXI operands";
-                }
-
-                return Instructions.LXI_Instr(operand1, highValue, lowValue);
-            }
-            else if (instr == "LDA")
-            {
-                if (!Instructions.IsValueOperandFormatValid(text))
-                    return "ERROR: Invalid LDA operand format";
-
-                int address = Instructions.ConvertValueOperandToDecimal(text);
-
-                if (!Instructions.IsValueInOneByteRange(address))
-                    return "ERROR: Invalid LDA address";
-
-                return Instructions.LDA_Instr(address);
-            }
-            else if (instr == "STA")
-            {
-                if (!Instructions.IsValueOperandFormatValid(text))
-                    return "ERROR: Invalid STA operand format";
-
-                int address = Instructions.ConvertValueOperandToDecimal(text);
-                return Instructions.STA_Instr(address);
-            }
-            else if (instr == "LHLD")
-            {
-                if (!Instructions.IsValueOperandFormatValid(text))
-                    return "ERROR: Invalid LHLD operand format";
-
-                int address = Instructions.ConvertValueOperandToDecimal(text);
-                int maxAddress = Chip.memory.Length - 1;
-
-                if (address == maxAddress - 1)
-                    return "ERROR: Invalid LHLD address";
-
-                return Instructions.LHLD_Instr(address);
-            }
-            else if (instr == "SHLD")
-            {
-                if (!Instructions.IsValueOperandFormatValid(text))
-                    return "ERROR: Invalid SHLD operand format";
-
-                int address = Instructions.ConvertValueOperandToDecimal(text);
-                int maxAddress = Chip.memory.Length - 1;
-
-                if (address == maxAddress - 1)
-                    return "ERROR: Invalid SHLD address";
-
-                return Instructions.SHLD_Instr(address);
-            }
-            else
-                return "ERROR: Instruction not found";
         }
 
         private void ClearButton_Click(object sender, RoutedEventArgs e)
@@ -212,14 +95,38 @@ namespace _8080
 
         private void UpdateMemoryWindow()
         {
-            int m = 0;
+            int address = memoryWindowAddressStart;
+            int rowHeader = memoryWindowRowHeaderStart;
+            int hex10000 = 65536;
 
-            for (int i = 0; i < 16; i++)
+            for (int i = 0; i < dt.Rows.Count; i++)
             {
-                for (int j = 1; j < 17; j++)
+                for (int j = 0; j < dt.Columns.Count; j++)
                 {
-                    dt.Rows[i][j] = Chip.memory[m];
-                    m++;
+                    // Last row must be empty
+                    if (address == hex10000)
+                    {
+                        dt.Rows[i][j] = "-";
+                        continue;
+                    }
+
+                    if (j == 0)
+                    {
+                        string hexRowHeaderValue = rowHeader.ToString("X");
+
+                        if (hexRowHeaderValue.Length == 1)
+                            hexRowHeaderValue = "00" + hexRowHeaderValue;
+                        else if (hexRowHeaderValue.Length == 2)
+                            hexRowHeaderValue = "0" + hexRowHeaderValue;
+
+                        dt.Rows[i][j] = hexRowHeaderValue;
+                        rowHeader++;
+                    }
+                    else
+                    {
+                        dt.Rows[i][j] = Chip.memory[address];
+                        address++;
+                    }
                 }
             }
         }
@@ -241,6 +148,48 @@ namespace _8080
             {
                 Chip.memory[i] = 0;
             }
+        }
+
+        int memoryWindowAddressStart = 0;
+        int memoryWindowRowHeaderStart = 0;
+        private void UpdateMemoryRowsButton_Click(object sender, RoutedEventArgs e)
+        {
+            int hexFF0 = 4080;
+            string fullAddress = memoryTableStart_Value.Text;
+            string rowAddress = fullAddress;
+
+            if (!Int32.TryParse(fullAddress, System.Globalization.NumberStyles.HexNumber, null, out _))
+            {
+                MessageBox.Show("ERROR: Invalid memory window address format");
+                return;
+            }
+
+            // Last char is column
+            if (rowAddress.Length > 1)
+                rowAddress = rowAddress[0..^1];
+
+            int rowAddress_Int = Int32.Parse(rowAddress, System.Globalization.NumberStyles.HexNumber);
+            int fullAddress_Int = Int32.Parse(fullAddress, System.Globalization.NumberStyles.HexNumber);
+
+            if (rowAddress_Int > hexFF0)
+            {
+                rowAddress_Int = hexFF0;
+                memoryTableStart_Value.Text = "FF0";
+            }
+            else if (rowAddress_Int < 0)
+            {
+                rowAddress_Int = 0;
+                memoryTableStart_Value.Text = "0";
+            }
+
+            fullAddress = rowAddress_Int.ToString("X");
+
+            if (!fullAddress.StartsWith("0"))
+                fullAddress += "0";
+
+            memoryWindowAddressStart = Int32.Parse(fullAddress, System.Globalization.NumberStyles.HexNumber);
+            memoryWindowRowHeaderStart = rowAddress_Int;
+            UpdateMemoryWindow();
         }
     }
 }

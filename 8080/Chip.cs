@@ -18,6 +18,15 @@ namespace _8080
             { "L", 0 }
         };
 
+        public static Dictionary<string, bool> conditionalBits = new Dictionary<string, bool>
+        {
+            { "CarryBit", false },
+            { "AuxiliaryCarryBit", false },
+            { "SignBit", false },
+            { "ZeroBit", false },
+            { "ParityBit", false }
+        };
+
         public static string[] instructions =
         {
             "MOV",
@@ -102,6 +111,6 @@ namespace _8080
             "NOP"
         };
 
-        public static int[] memory = Enumerable.Repeat(0, 256).ToArray();
+        public static int[] memory = Enumerable.Repeat(0, 65536).ToArray();
     }
 }

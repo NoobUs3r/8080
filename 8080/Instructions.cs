@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Collections;
 
 namespace _8080
 {
@@ -146,6 +147,38 @@ namespace _8080
             return "Success";
         }
 
+        public static string XCHG_Instr()
+        {
+            int tempRegD = Chip.registers["D"];
+            int tempRegE = Chip.registers["E"];
+
+            Chip.registers["D"] = Chip.registers["H"];
+            Chip.registers["E"] = Chip.registers["L"];
+            Chip.registers["H"] = tempRegD;
+            Chip.registers["L"] = tempRegE;
+            return "Success";
+        }
+
+        public static string ADD_Instr(string operand)
+        {
+            int value = -1;
+
+            if (Chip.registers.ContainsKey(operand))
+                value = Chip.registers[operand];
+            else
+                value = Chip.memory[Int32.Parse(operand)];
+
+            int result = Chip.registers["A"] + value;
+
+            // Removing bit number 8 (count starts from 0)
+            if (result >= 511)
+                result -= 511;
+
+            SetConditionalBits("ADD", Chip.registers["A"], value, result);
+            Chip.registers["A"] = result;
+            return "Success";
+        }
+
         public static string[] SplitOperands(string text, ref string errorMessage)
         {
             string[] operands = text.Split(",");
@@ -192,6 +225,116 @@ namespace _8080
                 return false;
 
             return true;
+        }
+
+        private static void SetConditionalBits(string operation, int operand1, int operand2, int result)
+        {
+            BitArray operand1Bits = ConvertIntTo8BitArray(operand1);
+            BitArray operand2Bits = ConvertIntTo8BitArray(operand2);
+            BitArray resultBits = ConvertIntTo8BitArray(result);
+
+            SetConditionalSignBit(resultBits);
+            SetConditionalAuxiliaryCarryBit(operation, operand1Bits, operand2Bits);
+            SetConditionalCarryBit(operation, operand1, operand2);
+            SetConditionalZeroBit(operation, operand1, operand2);
+            SetConditionalParityBit(resultBits);
+        }
+
+        private static BitArray ConvertIntTo8BitArray(int value)
+        {
+            byte[] numberAsByte = new byte[] { (byte)value };
+            BitArray valueArray = new BitArray(numberAsByte);
+
+            if (valueArray.Length < 8)
+            {
+                int bitsToAdd = 8 - valueArray.Length;
+                int j = 0;
+                BitArray eightBitArray = new BitArray(8);
+
+                for (int i = bitsToAdd; i < 8; i++)
+                {
+                    eightBitArray.Set(i, valueArray[j]);
+                    j++;
+                }
+
+                return eightBitArray;
+            }
+
+            return valueArray;
+        }
+
+        private static BitArray Get4LowerBits(BitArray array)
+        {
+            BitArray fourBitArray = new BitArray(4);
+
+            for (int i = 0; i < 4; i++)
+            {
+                fourBitArray.Set(i, array[i + 4]);
+            }
+
+            return fourBitArray;
+        }
+
+        private static void SetConditionalSignBit(BitArray value)
+        {
+            Chip.conditionalBits["SignBit"] = value[0];
+        }
+
+        private static void SetConditionalAuxiliaryCarryBit(string operation, BitArray array1, BitArray array2)
+        {
+            BitArray fourBitArray1 = Get4LowerBits(array1);
+            BitArray fourBitArray2 = Get4LowerBits(array2);
+            int operand1 = GetIntFromBitArray(fourBitArray1);
+            int operand2 = GetIntFromBitArray(fourBitArray2);
+
+            if (operation == "ADD")
+            {
+                int result = operand1 + operand2;
+                int fourBitMaxValue = 16;
+                Chip.conditionalBits["AuxiliaryCarryBit"] = result >= fourBitMaxValue;
+            }
+            // Add other operations
+        }
+
+        private static void SetConditionalCarryBit(string operation, int operand1, int operand2)
+        {
+            if (operation == "ADD")
+            {
+                int result = operand1 + operand2;
+                int eightBitMaxValue = 511;
+                Chip.conditionalBits["CarryBit"] = result >= eightBitMaxValue;
+            }
+            // Add other operations
+        }
+
+        private static void SetConditionalZeroBit(string operation, int operand1, int operand2)
+        {
+            if (operation == "ADD")
+            {
+                int result = operand1 + operand2;
+                Chip.conditionalBits["ZeroBit"] = result == 0;
+            }
+            // Add other operations
+        }
+
+        private static void SetConditionalParityBit(BitArray array)
+        {
+            int count = 0;
+
+            for (int i = 0; i < array.Length; i++)
+            {
+                if (array[i] == true)
+                    count++;
+            }
+
+            Chip.conditionalBits["ParityBit"] = count % 2 == 0;
+        }
+
+        private static int GetIntFromBitArray(BitArray bitArray)
+        {
+            int[] array = new int[1];
+            bitArray.CopyTo(array, 0);
+            return array[0];
         }
     }
 }

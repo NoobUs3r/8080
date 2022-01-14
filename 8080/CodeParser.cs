@@ -6,11 +6,10 @@ namespace _8080
 {
     public static class CodeParser
     {
-        public static string errorMessage = string.Empty;
         public static string instruction = string.Empty;
         public static string operands = string.Empty;
 
-        public static void CheckCodeForErrors(string code)
+        public static string CheckCodeForErrorsAndExecute(string code)
         {
             string codeUppercase = code.ToUpper();
             string[] lines = codeUppercase.Split(new string[] { "\r\n", "\r", "\n" },
@@ -37,27 +36,28 @@ namespace _8080
                     if (word.Contains(":"))
                     {
                         if (!IsLabelValid(word))
-                        {
-                            errorMessage = "ERROR: Invalid label";
-                            return;
-                        }
+                            return "ERROR: Invalid label";
 
                         continue;
                     }
                     // Check if instruction
                     else if (FindInstructionMatch(word) == "NO MATCH")
-                    {
-                        errorMessage = "ERROR: Invalid instruction";
-                        return;
-                    }
+                        return "ERROR: Invalid instruction";
 
+                    // Execute
                     instruction = word;
                     operands = lineRemainingPart;
+
+                    string instructionMethodMessage = ExecuteInstructionMethod(CodeParser.instruction, CodeParser.operands);
+
+                    if (instructionMethodMessage != "Success")
+                        return instructionMethodMessage;
+
                     break;
                 }
             }
 
-            return;
+            return "Success";
         }
 
         private static string RemoveCommentFromLine(string line)
@@ -89,7 +89,7 @@ namespace _8080
             label = RemoveSpacesFromBeginning(label);
             
             if (semicolonIndex != word.Length)
-                afterSemicolon = word.Substring(semicolonIndex + 1);
+                afterSemicolon = word[(semicolonIndex + 1)..];
 
             if (label == string.Empty ||
                 label.Contains(" ") || // LABEL can't have spaces inside
@@ -134,9 +134,134 @@ namespace _8080
             return "NO MATCH";
         }
 
-        public static void ClearErrorMessage()
+        public static string ExecuteInstructionMethod(string instr, string text)
         {
-            errorMessage = string.Empty;
+            string errorMessage = string.Empty;
+
+            if (instr == "MOV")
+            {
+                string[] operands = Instructions.SplitOperands(text, ref errorMessage);
+                string operand1 = operands[0];
+                string operand2 = operands[1];
+
+                if (errorMessage != string.Empty)
+                    return errorMessage;
+                else if (!Instructions.IsOperandValid(operand1) || !Instructions.IsOperandValid(operand2))
+                    return "ERROR: Invalid MOV operands";
+
+                return Instructions.MOV_Instr(operand1, operand2);
+            }
+            else if (instr == "MVI")
+            {
+                string[] operands = Instructions.SplitOperands(text, ref errorMessage);
+                string operand1 = operands[0];
+                string operand2 = operands[1];
+                int operand2_Int = Instructions.ConvertValueOperandToDecimal(operand2);
+
+                if (errorMessage != string.Empty)
+                    return errorMessage;
+                else if (!Instructions.IsValueOperandFormatValid(operand2))
+                    return "ERROR: Invalid MVI operand value";
+                else if (!Chip.registers.ContainsKey(operand1) || // First operand must be register
+                         operand2_Int == -1 || // Second operand must have correct value
+                         !Instructions.IsValueInOneByteRange(operand2_Int))
+                    return "ERROR: Invalid MVI operands";
+
+                return Instructions.MVI_Instr(operand1, operand2_Int);
+            }
+            else if (instr == "LXI")
+            {
+                string[] operands = Instructions.SplitOperands(text, ref errorMessage);
+                string operand1 = operands[0] == "M" ? "H" : operands[0];
+                string operand2 = operands[1];
+
+                if (errorMessage != string.Empty)
+                    return errorMessage;
+                else if (!Instructions.IsValueOperandFormatValid(operand2))
+                    return "ERROR: Invalid LXI operand format";
+
+                int operand2_Int = Instructions.ConvertValueOperandToDecimal(operand2);
+                int[] highAndLowValues = Instructions.ExtractHighAndLowValues(operand2_Int);
+                int highValue = highAndLowValues[0];
+                int lowValue = highAndLowValues[1];
+
+                if (operand1 != "B" && operand1 != "D" && operand1 != "H" || // First operand must be B, D or H
+                    !Instructions.IsValueInOneByteRange(highValue) || !Instructions.IsValueInOneByteRange(lowValue))
+                {
+                    return "ERROR: Invalid LXI operands";
+                }
+
+                return Instructions.LXI_Instr(operand1, highValue, lowValue);
+            }
+            else if (instr == "LDA")
+            {
+                if (!Instructions.IsValueOperandFormatValid(text))
+                    return "ERROR: Invalid LDA operand format";
+
+                int address = Instructions.ConvertValueOperandToDecimal(text);
+
+                if (!Instructions.IsValueInOneByteRange(address))
+                    return "ERROR: Invalid LDA address";
+
+                return Instructions.LDA_Instr(address);
+            }
+            else if (instr == "STA")
+            {
+                if (!Instructions.IsValueOperandFormatValid(text))
+                    return "ERROR: Invalid STA operand format";
+
+                int address = Instructions.ConvertValueOperandToDecimal(text);
+                return Instructions.STA_Instr(address);
+            }
+            else if (instr == "LHLD")
+            {
+                if (!Instructions.IsValueOperandFormatValid(text))
+                    return "ERROR: Invalid LHLD operand format";
+
+                int address = Instructions.ConvertValueOperandToDecimal(text);
+                int maxAddress = Chip.memory.Length - 1;
+
+                if (address == maxAddress - 1)
+                    return "ERROR: Invalid LHLD address";
+
+                return Instructions.LHLD_Instr(address);
+            }
+            else if (instr == "SHLD")
+            {
+                if (!Instructions.IsValueOperandFormatValid(text))
+                    return "ERROR: Invalid SHLD operand format";
+
+                int address = Instructions.ConvertValueOperandToDecimal(text);
+                int maxAddress = Chip.memory.Length - 1;
+
+                if (address == maxAddress - 1 || address < 0)
+                    return "ERROR: Invalid SHLD address";
+
+                return Instructions.SHLD_Instr(address);
+            }
+            else if (instr == "XCHG")
+            {
+                if (text != string.Empty)
+                    return "ERROR: Invalid XCHG operands";
+
+                return Instructions.XCHG_Instr();
+            }
+            else if (instr == "ADD")
+            {
+                if (!Chip.registers.ContainsKey(text))
+                {
+                    int maxAddress = Chip.memory.Length - 1;
+
+                    if (!Int32.TryParse(text, out int textInt))
+                        return "ERROR: Invalid ADD operands";
+                    else if (textInt > maxAddress || textInt < 0)
+                        return "ERROR: Invalid ADD address";
+                }
+
+                return Instructions.ADD_Instr(text);
+            }
+            else
+                return "ERROR: Instruction not found";
         }
     }
 }
