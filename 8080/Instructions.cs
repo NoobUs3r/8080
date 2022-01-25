@@ -38,10 +38,10 @@ namespace _8080
             return false;
         }
 
-        private static int GetM()
+        public static int GetM()
         {
             int h = Chip.registers["H"] * 16;
-            int l = Chip.registers["H"];
+            int l = Chip.registers["L"];
             return h + l;
         }
 
@@ -79,7 +79,7 @@ namespace _8080
         public static int ConvertValueOperandToDecimal(string operand)
         {
             if (operand.EndsWith("H"))
-                return ConvertHexToDecimal(operand);
+                return ConvertHexToDecimal(operand[..^1]);
             else if (operand.EndsWith("D"))
             {
                 operand = operand[..^1];
@@ -166,13 +166,45 @@ namespace _8080
             if (Chip.registers.ContainsKey(operand))
                 value = Chip.registers[operand];
             else
-                value = Chip.memory[Int32.Parse(operand)];
+            {
+                int mAddress = GetM();
+                value = Chip.memory[mAddress];
+            }
 
             int result = Chip.registers["A"] + value;
 
-            // Removing bit number 8 (count starts from 0)
-            if (result >= 511)
-                result -= 511;
+            if (!IsValueInOneByteRange(result))
+            {
+                if (result < 0)
+                    result = 0; // Registers can't hold negative numbers
+                else
+                    result = 255;
+            }
+
+            SetConditionalBits("ADD", Chip.registers["A"], value, result);
+            Chip.registers["A"] = result;
+            return "Success";
+        }
+
+        public static string ADI_Instr(int value)
+        {
+            if (!IsValueInOneByteRangeTwosComplement(value))
+            {
+                if (value < 0)
+                    value = -128;
+                else
+                    value = 127;
+            }
+
+            int result = Chip.registers["A"] + value;
+
+            if (!IsValueInOneByteRange(result))
+            {
+                if (result < 0)
+                    result = 0; // Registers can't hold negative numbers
+                else
+                    result = 255;
+            }
 
             SetConditionalBits("ADD", Chip.registers["A"], value, result);
             Chip.registers["A"] = result;
@@ -227,29 +259,53 @@ namespace _8080
             return true;
         }
 
+        public static bool IsValueInOneByteRangeTwosComplement(int value)
+        {
+            if (value < -128 || value > 127)
+                return false;
+
+            return true;
+        }
+
         private static void SetConditionalBits(string operation, int operand1, int operand2, int result)
         {
             BitArray operand1Bits = ConvertIntTo8BitArray(operand1);
             BitArray operand2Bits = ConvertIntTo8BitArray(operand2);
             BitArray resultBits = ConvertIntTo8BitArray(result);
 
+            /*if (BitConverter.IsLittleEndian)
+            {
+                ReverseBitArray(operand1Bits);
+                ReverseBitArray(operand2Bits);
+                ReverseBitArray(resultBits);
+            }*/
+
             SetConditionalSignBit(resultBits);
             SetConditionalAuxiliaryCarryBit(operation, operand1Bits, operand2Bits);
-            SetConditionalCarryBit(operation, operand1, operand2);
+            SetConditionalCarryBit(operation, operand1Bits, operand2Bits);
             SetConditionalZeroBit(operation, operand1, operand2);
             SetConditionalParityBit(resultBits);
         }
 
-        private static BitArray ConvertIntTo8BitArray(int value)
+        public static BitArray ConvertIntTo8BitArray(int value)
         {
+            bool isNegative = false;
+
+            if (value < 0)
+            {
+                isNegative = true;
+                value *= -1;
+            }
+
             byte[] numberAsByte = new byte[] { (byte)value };
             BitArray valueArray = new BitArray(numberAsByte);
+            BitArray eightBitArray = new BitArray(8);
+            CopyBitArrayToBitArray(valueArray, ref eightBitArray);
 
-            if (valueArray.Length < 8)
+            /*if (valueArray.Length < 8)
             {
                 int bitsToAdd = 8 - valueArray.Length;
                 int j = 0;
-                BitArray eightBitArray = new BitArray(8);
 
                 for (int i = bitsToAdd; i < 8; i++)
                 {
@@ -259,8 +315,13 @@ namespace _8080
 
                 return eightBitArray;
             }
+            else
+                valueArray.CopyTo(eightBitArray, 0);*/
 
-            return valueArray;
+            if (isNegative)
+                return Convert8BitArrayToTwosComplement(eightBitArray);
+
+            return eightBitArray;
         }
 
         private static BitArray Get4LowerBits(BitArray array)
@@ -277,32 +338,47 @@ namespace _8080
 
         private static void SetConditionalSignBit(BitArray value)
         {
-            Chip.conditionalBits["SignBit"] = value[0];
+            Chip.conditionalBits["SignBit"] = value[7];
         }
 
         private static void SetConditionalAuxiliaryCarryBit(string operation, BitArray array1, BitArray array2)
         {
             BitArray fourBitArray1 = Get4LowerBits(array1);
             BitArray fourBitArray2 = Get4LowerBits(array2);
-            int operand1 = GetIntFromBitArray(fourBitArray1);
-            int operand2 = GetIntFromBitArray(fourBitArray2);
 
             if (operation == "ADD")
             {
-                int result = operand1 + operand2;
-                int fourBitMaxValue = 16;
-                Chip.conditionalBits["AuxiliaryCarryBit"] = result >= fourBitMaxValue;
+                bool carry = false;
+
+                for (int i = 0; i < 4; i++)
+                {
+                    if ((fourBitArray1[i] == true && fourBitArray2[i] == true) ||
+                        ((fourBitArray1[i] == true || fourBitArray2[i] == true) && carry))
+                        carry = true;
+                    else carry = false;
+                }
+
+                Chip.conditionalBits["AuxiliaryCarryBit"] = carry;
             }
+
             // Add other operations
         }
 
-        private static void SetConditionalCarryBit(string operation, int operand1, int operand2)
+        private static void SetConditionalCarryBit(string operation, BitArray array1, BitArray array2)
         {
             if (operation == "ADD")
             {
-                int result = operand1 + operand2;
-                int eightBitMaxValue = 511;
-                Chip.conditionalBits["CarryBit"] = result >= eightBitMaxValue;
+                bool carry = false;
+
+                for (int i = 0; i < 8; i++)
+                {
+                    if ((array1[i] == true && array2[i] == true) ||
+                        ((array1[i] == true || array2[i] == true) && carry))
+                        carry = true;
+                    else carry = false;
+                }
+
+                Chip.conditionalBits["CarryBit"] = carry;
             }
             // Add other operations
         }
@@ -312,7 +388,7 @@ namespace _8080
             if (operation == "ADD")
             {
                 int result = operand1 + operand2;
-                Chip.conditionalBits["ZeroBit"] = result == 0;
+                Chip.conditionalBits["ZeroBit"] = result == 0 || result == 256; // 256 is 11111111 + 1, should result in 0
             }
             // Add other operations
         }
@@ -335,6 +411,115 @@ namespace _8080
             int[] array = new int[1];
             bitArray.CopyTo(array, 0);
             return array[0];
+        }
+
+        public static void ReverseBitArray(BitArray array)
+        {
+            int length = array.Length;
+            int mid = (length / 2);
+
+            for (int i = 0; i < mid; i++)
+            {
+                bool bit = array[i];
+                array[i] = array[length - i - 1];
+                array[length - i - 1] = bit;
+            }
+        }
+
+        public static string ConvertIntTo8BinaryString(int value)
+        {
+            bool isNegative = false;
+
+            if (value < 0)
+            {
+                isNegative = true;
+                value *= -1;
+            }
+
+            int from = 10;
+            int to = 2;
+            string val = value.ToString();
+            string binary = Convert.ToString(Convert.ToInt32(val, from), to);
+
+            while (binary.Length < 8)
+                binary = "0" + binary;
+
+            if (isNegative)
+                binary = Convert8BitStringToTwosComplement(binary);
+
+            return binary;
+        }
+
+        private static string Convert8BitStringToTwosComplement(string str)
+        {
+            string twosComplement = string.Empty;
+            bool carry = true;
+
+            for (int i = str.Length - 1; i >= 0; i--)
+            {
+                if (str[i] == '0')
+                {
+                    if (carry)
+                        twosComplement = "0" + twosComplement;
+                    else
+                    {
+                        twosComplement = "1" + twosComplement;
+                        carry = false;
+                    }
+                }
+                else
+                {
+                    if (carry)
+                    {
+                        twosComplement = "1" + twosComplement;
+                        carry = false;
+                    }
+                    else
+                        twosComplement = "0" + twosComplement;
+                }
+            }
+
+            return twosComplement;
+        }
+
+        private static BitArray Convert8BitArrayToTwosComplement(BitArray array)
+        {
+            BitArray twosComplement = new BitArray(8);
+            bool carry = true;
+
+            for (int i = 0; i < twosComplement.Length; i++)
+            {
+                if (array[i] == false)
+                {
+                    if (carry)
+                        twosComplement[i] = false;
+                    else
+                    {
+                        twosComplement[i] = true;
+                        carry = false;
+                    }
+                }
+                else
+                {
+                    if (carry)
+                    {
+                        twosComplement[i] = true;
+                        carry = false;
+                    }
+                    else
+                        twosComplement[i] = false;
+                }
+            }
+
+            return twosComplement;
+        }
+
+        private static void CopyBitArrayToBitArray(BitArray copyFromArray, ref BitArray copyToArray)
+        {
+            for (int i = 0; i < copyFromArray.Length; i++)
+            {
+                copyToArray[i] = copyFromArray[i];
+            }
         }
     }
 }

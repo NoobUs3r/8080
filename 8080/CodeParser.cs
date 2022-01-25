@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace _8080
@@ -250,15 +252,29 @@ namespace _8080
             {
                 if (!Chip.registers.ContainsKey(text))
                 {
-                    int maxAddress = Chip.memory.Length - 1;
-
-                    if (!Int32.TryParse(text, out int textInt))
+                    if (text != "M")
                         return "ERROR: Invalid ADD operands";
-                    else if (textInt > maxAddress || textInt < 0)
+
+                    int maxAddress = Chip.memory.Length - 1;
+                    int textInt = Instructions.GetM();
+
+                    if (textInt > maxAddress || textInt < 0)
                         return "ERROR: Invalid ADD address";
                 }
 
                 return Instructions.ADD_Instr(text);
+            }
+            else if (instr == "ADI")
+            {
+                if (!Instructions.IsValueOperandFormatValid(text))
+                    return "ERROR: Invalid ADI operand format";
+
+                int value = Instructions.ConvertValueOperandToDecimal(text);
+
+                if (!Instructions.IsValueInOneByteRangeTwosComplement(value))
+                    return "ERROR: Invalid ADI value";
+
+                return Instructions.ADI_Instr(value);
             }
             else
                 return "ERROR: Instruction not found";

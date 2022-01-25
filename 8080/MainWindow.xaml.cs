@@ -25,6 +25,7 @@ namespace _8080
         {
             InitializeComponent();
             UpdateRegWindows();
+            UpdateConBitWindows();
         }
 
         DataTable dt;
@@ -38,7 +39,7 @@ namespace _8080
                                                    "A", "B", "C", "D", "E", "F"};
 
             int cols = columnHeaders.Length;
-            int rows = 17;
+            int rows = 16;
 
             for (int i = 0; i < cols; i++)
             {
@@ -71,6 +72,7 @@ namespace _8080
                 MessageBox.Show(parserMessage);
 
             UpdateRegWindows();
+            UpdateConBitWindows();
             UpdateMemoryWindow();
         }
 
@@ -78,6 +80,8 @@ namespace _8080
         {
             ClearRegValues();
             UpdateRegWindows();
+            ClearConBitValues();
+            UpdateConBitWindows();
             ClearMemoryValues();
             UpdateMemoryWindow();
         }
@@ -91,6 +95,15 @@ namespace _8080
             regE_Value.Text = Chip.registers["E"].ToString();
             regH_Value.Text = Chip.registers["H"].ToString();
             regL_Value.Text = Chip.registers["L"].ToString();
+        }
+
+        private void UpdateConBitWindows()
+        {
+            conBitCarry_Value.Text = Chip.conditionalBits["CarryBit"].ToString();
+            conBitAuxCarry_Value.Text = Chip.conditionalBits["AuxiliaryCarryBit"].ToString();
+            conBitSign_Value.Text = Chip.conditionalBits["SignBit"].ToString();
+            conBitZero_Value.Text = Chip.conditionalBits["ZeroBit"].ToString();
+            conBitParity_Value.Text = Chip.conditionalBits["ParityBit"].ToString();
         }
 
         private void UpdateMemoryWindow()
@@ -140,6 +153,15 @@ namespace _8080
             Chip.registers["E"] = 0;
             Chip.registers["H"] = 0;
             Chip.registers["L"] = 0;
+        }
+
+        private void ClearConBitValues()
+        {
+            Chip.conditionalBits["CarryBit"] = false;
+            Chip.conditionalBits["AuxiliaryCarryBit"] = false;
+            Chip.conditionalBits["SignBit"] = false;
+            Chip.conditionalBits["ZeroBit"] = false;
+            Chip.conditionalBits["ParityBit"] = false;
         }
 
         private void ClearMemoryValues()
