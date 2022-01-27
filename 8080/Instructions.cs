@@ -14,7 +14,7 @@ namespace _8080
             if (operand1 == "M" || operand2 == "M")
             {
                 if (operand1 == "M" && operand2 == "M")
-                    return "Success";
+                    return "ERROR: Invalid MOV operands";
 
                 if (!IsValueInOneByteRange(mAddress))
                     return "ERROR: Invalid M hex address";
@@ -40,9 +40,7 @@ namespace _8080
 
         public static int GetM()
         {
-            int h = Chip.registers["H"] * 16;
-            int l = Chip.registers["L"];
-            return h + l;
+            return ConcatRegisters("H", "L");
         }
 
         public static string MVI_Instr(string operand1, int operand2)
@@ -171,18 +169,18 @@ namespace _8080
                 value = Chip.memory[mAddress];
             }
 
-            int result = Chip.registers["A"] + value;
+            int ogRegA = Chip.registers["A"];
+            Chip.registers["A"] += value;
 
-            if (!IsValueInOneByteRange(result))
+            if (!IsValueInOneByteRange(Chip.registers["A"]))
             {
-                if (result < 0)
-                    result = 0; // Registers can't hold negative numbers
+                if (Chip.registers["A"] < 0)
+                    Chip.registers["A"] += 256; // Registers can't hold negative numbers
                 else
-                    result = 255;
+                    Chip.registers["A"] -= 256;
             }
 
-            SetConditionalBits("ADD", Chip.registers["A"], value, result);
-            Chip.registers["A"] = result;
+            SetConditionalBits("ADD", ogRegA, value, Chip.registers["A"]);
             return "Success";
         }
 
@@ -196,18 +194,242 @@ namespace _8080
                     value = 127;
             }
 
-            int result = Chip.registers["A"] + value;
+            int ogRegA = Chip.registers["A"];
+            Chip.registers["A"] += value;
 
-            if (!IsValueInOneByteRange(result))
+            if (!IsValueInOneByteRange(Chip.registers["A"]))
             {
-                if (result < 0)
-                    result = 0; // Registers can't hold negative numbers
+                if (Chip.registers["A"] < 0)
+                    Chip.registers["A"] += 256; // Registers can't hold negative numbers
                 else
-                    result = 255;
+                    Chip.registers["A"] -= 256;
             }
 
-            SetConditionalBits("ADD", Chip.registers["A"], value, result);
-            Chip.registers["A"] = result;
+            SetConditionalBits("ADD", ogRegA, value, Chip.registers["A"]);
+            return "Success";
+        }
+
+        public static string INR_Instr(string reg)
+        {
+            bool ogCarryBit = Chip.conditionalBits["CarryBit"];
+
+            if (reg == "M")
+            {
+                int mAddress = GetM();
+                int ogMemoryValue = Chip.memory[mAddress];
+
+                if (Chip.memory[mAddress] == 255)
+                    Chip.memory[mAddress] = 0;
+                else
+                    Chip.memory[mAddress]++;
+
+                SetConditionalBits("ADD", ogMemoryValue, 1, Chip.memory[mAddress]);
+            }
+            else
+            {
+                int ogRegValue = Chip.registers[reg];
+
+                if (Chip.registers[reg] == 255)
+                    Chip.registers[reg] = 0;
+                else
+                    Chip.registers[reg]++;
+
+                SetConditionalBits("ADD", ogRegValue, 1, Chip.registers[reg]);
+            }
+
+            Chip.conditionalBits["CarryBit"] = ogCarryBit; // Not affected by this instr
+            return "Success";
+        }
+        public static string DCR_Instr(string reg)
+        {
+            bool ogCarryBit = Chip.conditionalBits["CarryBit"];
+
+            if (reg == "M")
+            {
+                int mAddress = GetM();
+                int ogMemoryValue = Chip.memory[mAddress];
+
+                if (Chip.memory[mAddress] == 0)
+                    Chip.memory[mAddress] = 255;
+                else
+                    Chip.memory[mAddress]--;
+
+                SetConditionalBits("SUB", ogMemoryValue, 1, Chip.memory[mAddress]);
+            }
+            else
+            {
+                int ogRegValue = Chip.registers[reg];
+
+                if (Chip.registers[reg] == 0)
+                    Chip.registers[reg] = 255;
+                else
+                    Chip.registers[reg]--;
+
+                SetConditionalBits("SUB", ogRegValue, 1, Chip.registers[reg]);
+            }
+
+            Chip.conditionalBits["CarryBit"] = ogCarryBit; // Not affected by this instr
+            return "Success";
+        }
+
+        public static string DAA_Instr()
+        {
+            BitArray regABits = ConvertIntTo8BitArray(Chip.registers["A"]);
+            BitArray regA4LowerBits = Get4LowerBits(regABits);
+            int regA4LowerBitsInt = ConvertBitArrayToInt(regA4LowerBits);
+            int ogRegA = Chip.registers["A"];
+
+            if (regA4LowerBitsInt > 9 || Chip.conditionalBits["AuxiliaryCarryBit"])
+            {
+                Chip.registers["A"] += 6;
+                SetConditionalBits("ADD", ogRegA, 6, Chip.registers["A"]);
+            }
+
+            BitArray regABitsUpdated = ConvertIntTo8BitArray(Chip.registers["A"]);
+            BitArray regA4UpperBits = Get4UpperBits(regABitsUpdated);
+            int regA4UpperBitsInt = ConvertBitArrayToInt(regA4UpperBits);
+
+            if (regA4UpperBitsInt > 9 || Chip.conditionalBits["CarryBit"])
+            {
+                int ogRegA2 = Chip.registers["A"];
+                int sixToBeAddedTo4UpperBits = 96; // 01100000
+                bool ogAuxiliaryCarryBit = Chip.conditionalBits["AuxiliaryCarryBit"];
+                Chip.registers["A"] += sixToBeAddedTo4UpperBits;
+
+                if (!IsValueInOneByteRange(Chip.registers["A"]))
+                {
+                    if (Chip.registers["A"] < 0)
+                        Chip.registers["A"] += 256; // Registers can't hold negative numbers
+                    else
+                        Chip.registers["A"] -= 256;
+                }
+
+                SetConditionalBits("ADD", ogRegA2, sixToBeAddedTo4UpperBits, Chip.registers["A"]);
+                Chip.conditionalBits["AuxiliaryCarryBit"] = ogAuxiliaryCarryBit; // AuxiliarCarry since we set it above
+            }
+
+            return "Success";
+        }
+
+        public static string STAX_Instr(string reg)
+        {
+            string regNext = GetNextDictKey(reg, Chip.registers);
+            int address = ConcatRegisters(reg, regNext);
+            Chip.memory[address] = Chip.registers["A"];
+            return "Success";
+        }
+
+        public static string LDAX_Instr(string reg)
+        {
+            string regNext = GetNextDictKey(reg, Chip.registers);
+            int address = ConcatRegisters(reg, regNext);
+            Chip.registers["A"] = Chip.memory[address];
+            return "Success";
+        }
+
+        public static string SUB_Instr(string operand)
+        {
+            int value = -1;
+
+            if (Chip.registers.ContainsKey(operand))
+                value = Chip.registers[operand];
+            else
+            {
+                int mAddress = GetM();
+                value = Chip.memory[mAddress];
+            }
+
+            int ogRegA = Chip.registers["A"];
+            Chip.registers["A"] -= value;
+
+            if (!IsValueInOneByteRange(Chip.registers["A"]))
+            {
+                if (Chip.registers["A"] < 0)
+                    Chip.registers["A"] += 256; // Registers can't hold negative numbers
+                else
+                    Chip.registers["A"] -= 256;
+            }
+
+            SetConditionalBits("SUB", ogRegA, value, Chip.registers["A"]);
+            return "Success";
+        }
+
+        public static string ANA_Instr(string reg)
+        {
+            int value = -1;
+
+            if (Chip.registers.ContainsKey(reg))
+                value = Chip.registers[reg];
+            else
+            {
+                int mAddress = GetM();
+                value = Chip.memory[mAddress];
+            }
+
+            BitArray regAArray = ConvertIntTo8BitArray(Chip.registers["A"]);
+            BitArray valueArray = ConvertIntTo8BitArray(value);
+            BitArray andResult = LogicAndBitArrays(regAArray, valueArray);
+            int andResultInt = ConvertBitArrayToInt(andResult);
+            int ogRegA = Chip.registers["A"];
+
+            Chip.registers["A"] = andResultInt;
+            SetConditionalBits("AND", ogRegA, value, Chip.registers["A"]);
+            return "Success";
+        }
+
+        public static string XRA_Instr(string reg)
+        {
+            int value = -1;
+
+            if (Chip.registers.ContainsKey(reg))
+                value = Chip.registers[reg];
+            else
+            {
+                int mAddress = GetM();
+                value = Chip.memory[mAddress];
+            }
+
+            BitArray regAArray = ConvertIntTo8BitArray(Chip.registers["A"]);
+            BitArray valueArray = ConvertIntTo8BitArray(value);
+            BitArray andResult = LogicXORBitArrays(regAArray, valueArray);
+            int andResultInt = ConvertBitArrayToInt(andResult);
+            int ogRegA = Chip.registers["A"];
+
+            Chip.registers["A"] = andResultInt;
+            SetConditionalBits("XOR", ogRegA, value, Chip.registers["A"]);
+            return "Success";
+        }
+
+        public static string ORA_Instr(string reg)
+        {
+            int value = -1;
+
+            if (Chip.registers.ContainsKey(reg))
+                value = Chip.registers[reg];
+            else
+            {
+                int mAddress = GetM();
+                value = Chip.memory[mAddress];
+            }
+
+            BitArray regAArray = ConvertIntTo8BitArray(Chip.registers["A"]);
+            BitArray valueArray = ConvertIntTo8BitArray(value);
+            BitArray andResult = LogicORBitArrays(regAArray, valueArray);
+            int andResultInt = ConvertBitArrayToInt(andResult);
+            int ogRegA = Chip.registers["A"];
+
+            Chip.registers["A"] = andResultInt;
+            SetConditionalBits("OR", ogRegA, value, Chip.registers["A"]);
+            return "Success";
+        }
+
+        public static string CMP_Instr(string reg)
+        {
+            int ogRegA = Chip.registers["A"];
+            int value = Chip.registers[reg];
+            SUB_Instr(reg);
+            Chip.registers["A"] = ogRegA;
+            SetConditionalBits("SUB", ogRegA, value, Chip.registers["A"]);
             return "Success";
         }
 
@@ -273,18 +495,11 @@ namespace _8080
             BitArray operand2Bits = ConvertIntTo8BitArray(operand2);
             BitArray resultBits = ConvertIntTo8BitArray(result);
 
-            /*if (BitConverter.IsLittleEndian)
-            {
-                ReverseBitArray(operand1Bits);
-                ReverseBitArray(operand2Bits);
-                ReverseBitArray(resultBits);
-            }*/
-
-            SetConditionalSignBit(resultBits);
-            SetConditionalAuxiliaryCarryBit(operation, operand1Bits, operand2Bits);
             SetConditionalCarryBit(operation, operand1Bits, operand2Bits);
-            SetConditionalZeroBit(operation, operand1, operand2);
+            SetConditionalAuxiliaryCarryBit(operation, operand1Bits, operand2Bits);
+            SetConditionalSignBit(resultBits);
             SetConditionalParityBit(resultBits);
+            SetConditionalZeroBit(result);
         }
 
         public static BitArray ConvertIntTo8BitArray(int value)
@@ -302,29 +517,25 @@ namespace _8080
             BitArray eightBitArray = new BitArray(8);
             CopyBitArrayToBitArray(valueArray, ref eightBitArray);
 
-            /*if (valueArray.Length < 8)
-            {
-                int bitsToAdd = 8 - valueArray.Length;
-                int j = 0;
-
-                for (int i = bitsToAdd; i < 8; i++)
-                {
-                    eightBitArray.Set(i, valueArray[j]);
-                    j++;
-                }
-
-                return eightBitArray;
-            }
-            else
-                valueArray.CopyTo(eightBitArray, 0);*/
-
             if (isNegative)
-                return Convert8BitArrayToTwosComplement(eightBitArray);
+                return ConvertBitArrayToTwosComplement(eightBitArray);
 
             return eightBitArray;
         }
 
         private static BitArray Get4LowerBits(BitArray array)
+        {
+            BitArray fourBitArray = new BitArray(4);
+
+            for (int i = 0; i < 4; i++)
+            {
+                fourBitArray.Set(i, array[i]);
+            }
+
+            return fourBitArray;
+        }
+
+        private static BitArray Get4UpperBits(BitArray array)
         {
             BitArray fourBitArray = new BitArray(4);
 
@@ -336,15 +547,15 @@ namespace _8080
             return fourBitArray;
         }
 
-        private static void SetConditionalSignBit(BitArray value)
+        private static void SetConditionalSignBit(BitArray array)
         {
-            Chip.conditionalBits["SignBit"] = value[7];
+            Chip.conditionalBits["SignBit"] = array[7];
         }
 
-        private static void SetConditionalAuxiliaryCarryBit(string operation, BitArray array1, BitArray array2)
+        private static void SetConditionalAuxiliaryCarryBit(string operation, BitArray regAArray, BitArray array)
         {
-            BitArray fourBitArray1 = Get4LowerBits(array1);
-            BitArray fourBitArray2 = Get4LowerBits(array2);
+            BitArray regAFourBitArray = Get4LowerBits(regAArray);
+            BitArray fourBitArray2 = Get4LowerBits(array);
 
             if (operation == "ADD")
             {
@@ -352,19 +563,35 @@ namespace _8080
 
                 for (int i = 0; i < 4; i++)
                 {
-                    if ((fourBitArray1[i] == true && fourBitArray2[i] == true) ||
-                        ((fourBitArray1[i] == true || fourBitArray2[i] == true) && carry))
+                    if ((regAFourBitArray[i] == true && fourBitArray2[i] == true) ||
+                        ((regAFourBitArray[i] == true || fourBitArray2[i] == true) && carry))
                         carry = true;
                     else carry = false;
                 }
 
                 Chip.conditionalBits["AuxiliaryCarryBit"] = carry;
             }
+            else if (operation == "SUB")
+            {
+                BitArray fourBitArray2TwosComplement = ConvertBitArrayToTwosComplement(fourBitArray2);
+                bool carry = false;
 
+                for (int i = 0; i < 4; i++)
+                {
+                    if ((regAFourBitArray[i] == true && fourBitArray2TwosComplement[i] == true) ||
+                        ((regAFourBitArray[i] == true || fourBitArray2TwosComplement[i] == true) && carry))
+                        carry = true;
+                    else carry = false;
+                }
+
+                Chip.conditionalBits["AuxiliaryCarryBit"] = carry;
+            }
+            else if (operation == "ADD" || operation == "XOR" || operation == "OR")
+                Chip.conditionalBits["AuxiliaryCarryBit"] = false;
             // Add other operations
         }
 
-        private static void SetConditionalCarryBit(string operation, BitArray array1, BitArray array2)
+        private static void SetConditionalCarryBit(string operation, BitArray regAArray, BitArray array2)
         {
             if (operation == "ADD")
             {
@@ -372,32 +599,45 @@ namespace _8080
 
                 for (int i = 0; i < 8; i++)
                 {
-                    if ((array1[i] == true && array2[i] == true) ||
-                        ((array1[i] == true || array2[i] == true) && carry))
+                    if ((regAArray[i] == true && array2[i] == true) ||
+                        ((regAArray[i] == true || array2[i] == true) && carry))
                         carry = true;
                     else carry = false;
                 }
 
                 Chip.conditionalBits["CarryBit"] = carry;
             }
+            else if (operation == "SUB")
+            {
+                BitArray array2TwosComplement = ConvertBitArrayToTwosComplement(array2);
+                bool carry = false;
+
+                for (int i = 0; i < 8; i++)
+                {
+                    if ((regAArray[i] == true && array2TwosComplement[i] == true) ||
+                        ((regAArray[i] == true || array2TwosComplement[i] == true) && carry))
+                        carry = true;
+                    else carry = false;
+                }
+
+                Chip.conditionalBits["CarryBit"] = !carry;
+            }
+            else if (operation == "ADD" || operation == "XOR" || operation == "OR")
+                Chip.conditionalBits["CarryBit"] = false;
+
             // Add other operations
         }
 
-        private static void SetConditionalZeroBit(string operation, int operand1, int operand2)
+        private static void SetConditionalZeroBit(int value)
         {
-            if (operation == "ADD")
-            {
-                int result = operand1 + operand2;
-                Chip.conditionalBits["ZeroBit"] = result == 0 || result == 256; // 256 is 11111111 + 1, should result in 0
-            }
-            // Add other operations
+            Chip.conditionalBits["ZeroBit"] = value == 0 || value == 256; // 256 is 11111111 + 1, should result in 0
         }
 
         private static void SetConditionalParityBit(BitArray array)
         {
             int count = 0;
 
-            for (int i = 0; i < array.Length; i++)
+            for (int i = 0; i < 8; i++)
             {
                 if (array[i] == true)
                     count++;
@@ -406,7 +646,7 @@ namespace _8080
             Chip.conditionalBits["ParityBit"] = count % 2 == 0;
         }
 
-        private static int GetIntFromBitArray(BitArray bitArray)
+        public static int ConvertBitArrayToInt(BitArray bitArray)
         {
             int[] array = new int[1];
             bitArray.CopyTo(array, 0);
@@ -482,10 +722,14 @@ namespace _8080
             return twosComplement;
         }
 
-        private static BitArray Convert8BitArrayToTwosComplement(BitArray array)
+        private static BitArray ConvertBitArrayToTwosComplement(BitArray array)
         {
-            BitArray twosComplement = new BitArray(8);
-            bool carry = true;
+            return ConvertBitArrayToOnesComplement(array, true);
+        }
+
+        public static BitArray ConvertBitArrayToOnesComplement(BitArray array, bool carry = false)
+        {
+            BitArray twosComplement = new BitArray(array.Length);
 
             for (int i = 0; i < twosComplement.Length; i++)
             {
@@ -520,6 +764,67 @@ namespace _8080
             {
                 copyToArray[i] = copyFromArray[i];
             }
+        }
+
+        private static BitArray ConcatBitArrays(BitArray upperBitsArray, BitArray lowerBitsArray)
+        {
+            BitArray concatArray = new BitArray(upperBitsArray.Length + lowerBitsArray.Length);
+
+            for (int i = 0; i < concatArray.Length; i++)
+            {
+                if (i <= lowerBitsArray.Length)
+                    concatArray[i] = upperBitsArray[i];
+                else
+                    concatArray[i] = lowerBitsArray[i];
+            }
+
+            return concatArray;
+        }
+
+        private static int ConcatRegisters(string regUpperBits, string regLowerBits)
+        {
+            int upperBits = Chip.registers[regUpperBits] * 16;
+            int lowerBits = Chip.registers[regLowerBits];
+            return upperBits + lowerBits;
+        }
+
+        public static BitArray LogicAndBitArrays(BitArray array1, BitArray array2)
+        {
+            BitArray fin = new BitArray(array1.Length);
+
+            for (int i = 0; i < fin.Length; i++)
+            {
+                if (array1[i] && array2[i])
+                    fin[i] = true;
+            }
+
+            return fin;
+        }
+
+        public static BitArray LogicXORBitArrays(BitArray array1, BitArray array2)
+        {
+            BitArray fin = new BitArray(array1.Length);
+
+            for (int i = 0; i < fin.Length; i++)
+            {
+                if (array1[i] != array2[i])
+                    fin[i] = true;
+            }
+
+            return fin;
+        }
+
+        public static BitArray LogicORBitArrays(BitArray array1, BitArray array2)
+        {
+            BitArray fin = new BitArray(array1.Length);
+
+            for (int i = 0; i < fin.Length; i++)
+            {
+                if (array1[i] || array2[i])
+                    fin[i] = true;
+            }
+
+            return fin;
         }
     }
 }

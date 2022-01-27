@@ -112,5 +112,18 @@ namespace _8080
         };
 
         public static int[] memory = Enumerable.Repeat(0, 65536).ToArray();
+        public static int programPointer = 0;
+
+        public static Dictionary<string, string> RegCode = new Dictionary<string, string>
+        {
+            { "B", "000" },
+            { "C", "001" },
+            { "D", "010" },
+            { "E", "011" },
+            { "H", "100" },
+            { "L", "101" },
+            { "M", "110" },
+            { "A", "111" }
+        };
     }
 }

@@ -66,6 +66,7 @@ namespace _8080
 
         private void RunButton_Click(object sender, RoutedEventArgs e)
         {
+            ClearButton_Click(sender, e);
             string parserMessage = CodeParser.CheckCodeForErrorsAndExecute(CodeBox.Text);
 
             if (parserMessage != "Success")
@@ -84,6 +85,7 @@ namespace _8080
             UpdateConBitWindows();
             ClearMemoryValues();
             UpdateMemoryWindow();
+            Chip.programPointer = 0;
         }
 
         private void UpdateRegWindows()
