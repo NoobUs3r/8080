@@ -26,6 +26,8 @@ namespace _8080
             InitializeComponent();
             UpdateRegWindows();
             UpdateConBitWindows();
+            UpdateProgramCounterWindow();
+            UpdateStackPointerWindow();
         }
 
         DataTable dt;
@@ -74,6 +76,8 @@ namespace _8080
 
             UpdateRegWindows();
             UpdateConBitWindows();
+            UpdateProgramCounterWindow();
+            UpdateStackPointerWindow();
             UpdateMemoryWindow();
         }
 
@@ -83,9 +87,12 @@ namespace _8080
             UpdateRegWindows();
             ClearConBitValues();
             UpdateConBitWindows();
+            ClearProgramCounterValue();
+            UpdateProgramCounterWindow();
+            ClearStackPointerValue();
+            UpdateStackPointerWindow();
             ClearMemoryValues();
             UpdateMemoryWindow();
-            Chip.programPointer = 0;
         }
 
         private void UpdateRegWindows()
@@ -106,6 +113,16 @@ namespace _8080
             conBitSign_Value.Text = Chip.conditionalBits["SignBit"].ToString();
             conBitZero_Value.Text = Chip.conditionalBits["ZeroBit"].ToString();
             conBitParity_Value.Text = Chip.conditionalBits["ParityBit"].ToString();
+        }
+
+        private void UpdateProgramCounterWindow()
+        {
+            programCounter_Value.Text = Chip.programCounter.ToString();
+        }
+
+        private void UpdateStackPointerWindow()
+        {
+            stackPointer_Value.Text = Chip.stackPointer.ToString();
         }
 
         private void UpdateMemoryWindow()
@@ -164,6 +181,16 @@ namespace _8080
             Chip.conditionalBits["SignBit"] = false;
             Chip.conditionalBits["ZeroBit"] = false;
             Chip.conditionalBits["ParityBit"] = false;
+        }
+
+        private void ClearProgramCounterValue()
+        {
+            Chip.programCounter = 0;
+        }
+
+        private void ClearStackPointerValue()
+        {
+            Chip.stackPointer = 65535;
         }
 
         private void ClearMemoryValues()

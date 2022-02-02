@@ -50,61 +50,69 @@
                 Grid.Row="1" Click="RunButton_Click" />
         <Button x:Name="ClearButton" Content="Clear" Grid.Column="2" 
                 Grid.Row="2" Click="ClearButton_Click" />
-        <TextBox x:Name="regA" Grid.Column="3" Grid.Row="1" Text="reg A"
+        <TextBox x:Name="conBitCarry" Grid.Column="3" Grid.Row="1" Text="carry"
+                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True" Background="Gold"/>
+        <TextBox x:Name="conBitCarry_Value" Grid.Column="3" Grid.Row="2" 
                  Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="regA_Value" Grid.Column="3" Grid.Row="2" 
+        <TextBox x:Name="conBitAuxCarry" Grid.Column="4" Grid.Row="1" Text="aux carry"
+                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True" Background="Gold"/>
+        <TextBox x:Name="conBitAuxCarry_Value" Grid.Column="4" Grid.Row="2" 
                  Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="regB" Grid.Column="4" Grid.Row="1" Text="reg B"
+        <TextBox x:Name="conBitSign" Grid.Column="5" Grid.Row="1" Text="sign"
+                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True" Background="Gold"/>
+        <TextBox x:Name="conBitSign_Value" Grid.Column="5" Grid.Row="2" 
                  Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="regB_Value" Grid.Column="4" Grid.Row="2" 
+        <TextBox x:Name="conBitZero" Grid.Column="6" Grid.Row="1" Text="zero"
+                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True" Background="Gold"/>
+        <TextBox x:Name="conBitZero_Value" Grid.Column="6" Grid.Row="2" 
                  Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="regC" Grid.Column="5" Grid.Row="1" Text="reg C"
+        <TextBox x:Name="conBitParity" Grid.Column="7" Grid.Row="1" Text="parity"
+                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True" Background="Gold"/>
+        <TextBox x:Name="conBitParity_Value" Grid.Column="7" Grid.Row="2" 
                  Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="regC_Value" Grid.Column="5" Grid.Row="2" 
+        <TextBox x:Name="programCounter" Grid.Column="8" Grid.Row="1" Text="pc"
+                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True" Background="LightGreen"/>
+        <TextBox x:Name="programCounter_Value" Grid.Column="8" Grid.Row="2" 
                  Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="regD" Grid.Column="6" Grid.Row="1" Text="reg D"
+        <TextBox x:Name="stackPointer" Grid.Column="9" Grid.Row="1" Text="sp"
+                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True" Background="LightCoral"/>
+        <TextBox x:Name="stackPointer_Value" Grid.Column="9" Grid.Row="2" 
                  Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="regD_Value" Grid.Column="6" Grid.Row="2" 
+        <TextBox x:Name="regA" Grid.Column="2" Grid.Row="3" Text="reg A"
+                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True" Background="LightBlue"/>
+        <TextBox x:Name="regA_Value" Grid.Column="2" Grid.Row="4" 
                  Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="regE" Grid.Column="7" Grid.Row="1" Text="reg E"
+        <TextBox x:Name="regB" Grid.Column="3" Grid.Row="3" Text="reg B"
+                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True" Background="LightBlue"/>
+        <TextBox x:Name="regB_Value" Grid.Column="3" Grid.Row="4" 
                  Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="regE_Value" Grid.Column="7" Grid.Row="2" 
+        <TextBox x:Name="regC" Grid.Column="4" Grid.Row="3" Text="reg C"
+                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True" Background="LightBlue"/>
+        <TextBox x:Name="regC_Value" Grid.Column="4" Grid.Row="4" 
                  Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="regH" Grid.Column="8" Grid.Row="1" Text="reg H"
+        <TextBox x:Name="regD" Grid.Column="5" Grid.Row="3" Text="reg D"
+                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True" Background="LightBlue"/>
+        <TextBox x:Name="regD_Value" Grid.Column="5" Grid.Row="4" 
                  Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="regH_Value" Grid.Column="8" Grid.Row="2" 
+        <TextBox x:Name="regE" Grid.Column="6" Grid.Row="3" Text="reg E"
+                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True" Background="LightBlue"/>
+        <TextBox x:Name="regE_Value" Grid.Column="6" Grid.Row="4" 
                  Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="regL" Grid.Column="9" Grid.Row="1" Text="reg L"
+        <TextBox x:Name="regH" Grid.Column="7" Grid.Row="3" Text="reg H"
+                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True" Background="LightBlue"/>
+        <TextBox x:Name="regH_Value" Grid.Column="7" Grid.Row="4" 
                  Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="regL_Value" Grid.Column="9" Grid.Row="2" 
+        <TextBox x:Name="regL" Grid.Column="8" Grid.Row="3" Text="reg L"
+                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True" Background="LightBlue"/>
+        <TextBox x:Name="regL_Value" Grid.Column="8" Grid.Row="4" 
                  Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <DataGrid AutoGenerateColumns="True" Name="memoryTable" CanUserAddRows="false" MinColumnWidth="27" Grid.Column="2" Grid.Row="3" Grid.ColumnSpan="8"/>
-        <TextBox x:Name="memoryTableStart" Grid.Column="5" Grid.ColumnSpan="3" Grid.Row="4" Text="Show memory row starting (hex)" 
+        <DataGrid AutoGenerateColumns="True" Name="memoryTable" CanUserAddRows="false" MinColumnWidth="27" Grid.Column="2" Grid.Row="5" Grid.ColumnSpan="8"/>
+        <TextBox x:Name="memoryTableStart" Grid.Column="5" Grid.ColumnSpan="3" Grid.Row="6" Text="Show memory row starting (hex)" 
                  Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="memoryTableStart_Value" Grid.Column="8" Grid.Row="4" Text="0"
+        <TextBox x:Name="memoryTableStart_Value" Grid.Column="8" Grid.Row="6" Text="0"
                  Grid.RowSpan="1" MinWidth="50" MaxLength="4" AcceptsReturn="false" IsReadOnly="False"/>
         <Button x:Name="updateMemoryWindowButton" Content="Update" Grid.Column="9" 
-                Grid.Row="4" Click="UpdateMemoryRowsButton_Click" />
+                Grid.Row="6" Click="UpdateMemoryRowsButton_Click" />
         <Separator Width="20" Background="Transparent" Grid.Column="10"/>
-        <TextBox x:Name="conBitCarry" Grid.Column="10" Grid.Row="1" Text="carry"
-                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="conBitCarry_Value" Grid.Column="10" Grid.Row="2" 
-                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="conBitAuxCarry" Grid.Column="11" Grid.Row="1" Text="aux carry"
-                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="conBitAuxCarry_Value" Grid.Column="11" Grid.Row="2" 
-                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="conBitSign" Grid.Column="12" Grid.Row="1" Text="sign"
-                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="conBitSign_Value" Grid.Column="12" Grid.Row="2" 
-                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="conBitZero" Grid.Column="13" Grid.Row="1" Text="zero"
-                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="conBitZero_Value" Grid.Column="13" Grid.Row="2" 
-                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="conBitParity" Grid.Column="14" Grid.Row="1" Text="parity"
-                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
-        <TextBox x:Name="conBitParity_Value" Grid.Column="14" Grid.Row="2" 
-                 Grid.RowSpan="1" MinWidth="50" AcceptsReturn="true" IsReadOnly="True"/>
     </Grid>
 </Window>

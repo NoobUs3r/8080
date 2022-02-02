@@ -112,7 +112,8 @@ namespace _8080
         };
 
         public static int[] memory = Enumerable.Repeat(0, 65536).ToArray();
-        public static int programPointer = 0;
+        public static int programCounter = 0;
+        public static int stackPointer = 65535;
 
         public static Dictionary<string, string> RegCode = new Dictionary<string, string>
         {
