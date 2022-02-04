@@ -14,10 +14,26 @@ namespace _8080
             { "CMA", "00101111" },
             { "DAA", "00100111" },
             { "NOP", "00000000" },
-            { "INR", "100" },
-            { "DCR", "101" },
+            { "ADI", "11000110" },
+            { "ACI", "11001110" },
+            { "SUI", "11010110" },
+            { "SBI", "11011110" },
+            { "ANI", "11100110" },
+            { "XRI", "11101110" },
+            { "ORI", "11110110" },
+            { "CPI", "11111110" },
+            { "XCHG", "11101011" },
+            { "XTHL", "11100011" },
+            { "SPHL", "11111001" },
             { "STAX", "0010" },
             { "LDAX", "1010" },
+            { "PUSH", "0101" },
+            { "POP", "0001" },
+            { "DAD", "1001" },
+            { "INX", "0011" },
+            { "DCX", "1011" },
+            { "INR", "100" },
+            { "DCR", "101" },
             { "ADD", "000" },
             { "ADC", "001" },
             { "SUB", "010" },
@@ -26,31 +42,20 @@ namespace _8080
             { "XRA", "101" },
             { "ORA", "110" },
             { "CMP", "111" },
+            { "SHLD", "00" },
+            { "LHLD", "01" },
             { "RLC", "00" },
             { "RRC", "01" },
             { "RAL", "10" },
-            { "RAR", "11" }
+            { "RAR", "11" },
+            { "STA", "10" },
+            { "LDA", "11" },
         };
 
         public static bool IsOpLabNoOperand(string opLab)
         {
-            if (opLab == "CMC" || opLab == "STC" || opLab == "CMA" || opLab == "DAA" || opLab == "NOP")
-                return true;
-
-            return false;
-        }
-
-        public static bool IsOpLabSingleReg(string opLab)
-        {
-            if (opLab == "INR" || opLab == "DCR")
-                return true;
-
-            return false;
-        }
-
-        public static bool IsOpLabDataTransfer(string opLab)
-        {
-            if (opLab == "STAX" || opLab == "LDAX") // MOV is not included because of different number of operands
+            if (opLab == "CMC" || opLab == "STC" || opLab == "CMA" || opLab == "DAA" || opLab == "NOP" ||
+                opLab == "XCHG" || opLab == "XTHL" || opLab == "SPHL")
                 return true;
 
             return false;
@@ -59,7 +64,7 @@ namespace _8080
         public static bool IsOpLabRegOrMemToAcc(string opLab)
         {
             if (opLab == "ADD" || opLab == "ADC" || opLab == "SUB" || opLab == "SBB" || opLab == "ANA" ||
-                opLab == "XRA" || opLab == "ORA" || opLab == "CMP") 
+                opLab == "XRA" || opLab == "ORA" || opLab == "CMP")
                 return true;
 
             return false;
@@ -68,6 +73,23 @@ namespace _8080
         public static bool IsOpLabRotateAcc(string opLab)
         {
             if (opLab == "RLC" || opLab == "RRC" || opLab == "RAL" || opLab == "RAR")
+                return true;
+
+            return false;
+        }
+
+        public static bool IsOpLabImmediateInstr(string opLab)
+        {
+            if (opLab == "ADI" || opLab == "ACI" || opLab == "SUI" || opLab == "SBI" ||
+                opLab == "ANI" || opLab == "XRI" || opLab == "ORI" || opLab == "CPI")
+                return true;
+
+            return false;
+        }
+
+        public static bool IsOpLabDirectAddressing(string opLab)
+        {
+            if (opLab == "STA" || opLab == "LDA" || opLab == "SHLD" || opLab == "LHLD")
                 return true;
 
             return false;
@@ -111,7 +133,14 @@ namespace _8080
 
         public static string MVI_Instr(string operand1, int operand2)
         {
-            Chip.registers[operand1] = operand2;
+            if (operand1 == "M")
+            {
+                int mAddress = GetM();
+                Chip.memory[mAddress] = operand2;
+            }
+            else
+                Chip.registers[operand1] = operand2;
+            
             return "Success";
         }
 
@@ -119,12 +148,11 @@ namespace _8080
         {
             if (operand.EndsWith("H"))
             {
-                if (operand.StartsWith("0"))
+                if (Char.IsDigit(operand[0]))
                     return true;
 
                 return false;
             }
-            // Add other checks for bites, decimals etc
             else if (operand.EndsWith("D"))
             {
                 operand = operand[..^1];
@@ -136,8 +164,28 @@ namespace _8080
             }
             else if (Int32.TryParse(operand, out int value))
                 return true;
+            // Add other checks for bites etc
             else
                 return false;
+        }
+
+        public static int ConvertValueOperandToDecimalTwosComplement(string operand, ref string errorMessage)
+        {
+            if (operand.EndsWith("H"))
+                return ConvertHexToDecimalTwosComplement(operand[..^1], ref errorMessage);
+            else if (operand.EndsWith("D"))
+            {
+                operand = operand[..^1];
+
+                if (Int32.TryParse(operand, out int value))
+                    return value;
+
+                return -1;
+            }
+            else if (Int32.TryParse(operand, out int value))
+                return value; // Add other formats like bites etc
+            else
+                return -1;
         }
 
         public static int ConvertValueOperandToDecimal(string operand)
@@ -161,10 +209,18 @@ namespace _8080
 
         public static string LXI_Instr(string operand1, int highValue, int lowValue)
         {
-            string nextRegister = GetNextDictKey(operand1, Chip.registers);
+            if (operand1 == "SP")
+            {
+                int concatValue = Concat8BitIntValues(highValue, lowValue);
+                Chip.stackPointer = concatValue;
+            }
+            else
+            {
+                string nextRegister = GetNextDictKey(operand1, Chip.registers);
+                Chip.registers[operand1] = highValue;
+                Chip.registers[nextRegister] = lowValue;
+            }
 
-            Chip.registers[operand1] = highValue;
-            Chip.registers[nextRegister] = lowValue;
             return "Success";
         }
 
@@ -191,6 +247,9 @@ namespace _8080
 
         public static string LHLD_Instr(int address)
         {
+            if (address == 65535)
+                return "ERROR: Invalid LHLD address";
+
             int nextAddress = address + 1;
             int lowAddressValue = Chip.memory[address];
             int highAddressValue = Chip.memory[nextAddress];
@@ -202,6 +261,9 @@ namespace _8080
 
         public static string SHLD_Instr(int address)
         {
+            if (address == 65535)
+                return "ERROR: Invalid SHLD address";
+
             int nextAddress = address + 1;
             int lValue = Chip.registers["L"];
             int hValue = Chip.registers["H"];
@@ -248,18 +310,13 @@ namespace _8080
         public static string ADI_Instr(int value)
         {
             if (!IsValueInOneByteRangeTwosComplement(value))
-            {
-                if (value < 0)
-                    value = -128;
-                else
-                    value = 127;
-            }
+                value = NormalizeOneByteValueTwosComplement(value);
 
             int ogRegA = Chip.registers["A"];
             Chip.registers["A"] += value;
 
-            if (!IsValueInOneByteRange(Chip.registers["A"]))
-                Chip.registers["A"] = NormalizeOneByteValue(Chip.registers["A"]);
+            if (!IsValueInOneByteRangeTwosComplement(Chip.registers["A"]))
+                Chip.registers["A"] = NormalizeOneByteValueTwosComplement(Chip.registers["A"]);
 
             SetConditionalBits("ADD", ogRegA, value, Chip.registers["A"]);
             return "Success";
@@ -396,6 +453,21 @@ namespace _8080
             return "Success";
         }
 
+        public static string SUI_Instr(int value)
+        {
+            if (!IsValueInOneByteRangeTwosComplement(value))
+                value = NormalizeOneByteValueTwosComplement(value);
+
+            int ogRegA = Chip.registers["A"];
+            Chip.registers["A"] -= value;
+
+            if (!IsValueInOneByteRangeTwosComplement(Chip.registers["A"]))
+                Chip.registers["A"] = NormalizeOneByteValueTwosComplement(Chip.registers["A"]);
+
+            SetConditionalBits("SUB", ogRegA, value, Chip.registers["A"]);
+            return "Success";
+        }
+
         public static string ANA_Instr(string reg)
         {
             int value = -1;
@@ -408,6 +480,19 @@ namespace _8080
                 value = Chip.memory[mAddress];
             }
 
+            BitArray regAArray = ConvertIntTo8BitArray(Chip.registers["A"]);
+            BitArray valueArray = ConvertIntTo8BitArray(value);
+            BitArray andResult = LogicAndBitArrays(regAArray, valueArray);
+            int andResultInt = ConvertBitArrayToInt(andResult);
+            int ogRegA = Chip.registers["A"];
+
+            Chip.registers["A"] = andResultInt;
+            SetConditionalBits("AND", ogRegA, value, Chip.registers["A"]);
+            return "Success";
+        }
+
+        public static string ANI_Instr(int value)
+        {
             BitArray regAArray = ConvertIntTo8BitArray(Chip.registers["A"]);
             BitArray valueArray = ConvertIntTo8BitArray(value);
             BitArray andResult = LogicAndBitArrays(regAArray, valueArray);
@@ -442,6 +527,19 @@ namespace _8080
             return "Success";
         }
 
+        public static string XRI_Instr(int value)
+        {
+            BitArray regAArray = ConvertIntTo8BitArray(Chip.registers["A"]);
+            BitArray valueArray = ConvertIntTo8BitArray(value);
+            BitArray andResult = LogicXORBitArrays(regAArray, valueArray);
+            int andResultInt = ConvertBitArrayToInt(andResult);
+            int ogRegA = Chip.registers["A"];
+
+            Chip.registers["A"] = andResultInt;
+            SetConditionalBits("XOR", ogRegA, value, Chip.registers["A"]);
+            return "Success";
+        }
+
         public static string ORA_Instr(string reg)
         {
             int value = -1;
@@ -465,11 +563,33 @@ namespace _8080
             return "Success";
         }
 
+        public static string ORI_Instr(int value)
+        {
+            BitArray regAArray = ConvertIntTo8BitArray(Chip.registers["A"]);
+            BitArray valueArray = ConvertIntTo8BitArray(value);
+            BitArray andResult = LogicORBitArrays(regAArray, valueArray);
+            int andResultInt = ConvertBitArrayToInt(andResult);
+            int ogRegA = Chip.registers["A"];
+
+            Chip.registers["A"] = andResultInt;
+            SetConditionalBits("OR", ogRegA, value, Chip.registers["A"]);
+            return "Success";
+        }
+
         public static string CMP_Instr(string reg)
         {
             int ogRegA = Chip.registers["A"];
             int value = Chip.registers[reg];
             SUB_Instr(reg);
+            Chip.registers["A"] = ogRegA;
+            SetConditionalBits("SUB", ogRegA, value, Chip.registers["A"]);
+            return "Success";
+        }
+
+        public static string CPI_Instr(int value)
+        {
+            int ogRegA = Chip.registers["A"];
+            SUI_Instr(value);
             Chip.registers["A"] = ogRegA;
             SetConditionalBits("SUB", ogRegA, value, Chip.registers["A"]);
             return "Success";
@@ -741,6 +861,20 @@ namespace _8080
             return dict.ElementAt(0).Key;
         }
 
+        private static int ConvertHexToDecimalTwosComplement(string hex, ref string errorMessage)
+        {
+            if (Int32.TryParse(hex.ToString(), System.Globalization.NumberStyles.HexNumber, null, out int value))
+            {
+                if (!IsValueInOneByteRangeTwosComplement(value))
+                    value = NormalizeOneByteValueTwosComplement(value);
+
+                return value;
+            }
+
+            errorMessage = "ERROR: Invalid hex value";
+            return -1;
+        }
+
         private static int ConvertHexToDecimal(string hex)
         {
             if (Int32.TryParse(hex.ToString(), System.Globalization.NumberStyles.HexNumber, null, out int value))
@@ -776,6 +910,14 @@ namespace _8080
         public static int NormalizeOneByteValue(int value)
         {
             if (value < 0)
+                return value += 256;
+
+            return value -= 256;
+        }
+
+        public static int NormalizeOneByteValueTwosComplement(int value)
+        {
+            if (value < -128)
                 return value += 256;
 
             return value -= 256;
@@ -1088,7 +1230,7 @@ namespace _8080
             return Concat8BitIntValues(upperBits, lowerBits);
         }
 
-        private static int Concat8BitIntValues(int intUpperBits, int intLowerBits)
+        public static int Concat8BitIntValues(int intUpperBits, int intLowerBits)
         {
             intUpperBits *= 256;
             return intUpperBits + intLowerBits;

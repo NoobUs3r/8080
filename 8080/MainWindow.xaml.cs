@@ -97,13 +97,29 @@ namespace _8080
 
         private void UpdateRegWindows()
         {
-            regA_Value.Text = Chip.registers["A"].ToString();
-            regB_Value.Text = Chip.registers["B"].ToString();
-            regC_Value.Text = Chip.registers["C"].ToString();
-            regD_Value.Text = Chip.registers["D"].ToString();
-            regE_Value.Text = Chip.registers["E"].ToString();
-            regH_Value.Text = Chip.registers["H"].ToString();
-            regL_Value.Text = Chip.registers["L"].ToString();
+            for (int i = 0; i < Chip.registers.Count; i++)
+            {
+                string reg = Chip.registers.ElementAt(i).Key;
+                string hexValue = Chip.registers[reg].ToString("X");
+
+                if (hexValue.Length > 2)
+                    hexValue = hexValue.Substring(hexValue.Length - 2);
+
+                if (reg == "A")
+                    regA_Value.Text = hexValue;
+                else if (reg == "B")
+                    regB_Value.Text = hexValue;
+                else if (reg == "C")
+                    regC_Value.Text = hexValue;
+                else if (reg == "D")
+                    regD_Value.Text = hexValue;
+                else if (reg == "E")
+                    regE_Value.Text = hexValue;
+                else if (reg == "H")
+                    regH_Value.Text = hexValue;
+                else if (reg == "L")
+                    regL_Value.Text = hexValue;
+            }
         }
 
         private void UpdateConBitWindows()
@@ -117,12 +133,22 @@ namespace _8080
 
         private void UpdateProgramCounterWindow()
         {
-            programCounter_Value.Text = Chip.programCounter.ToString();
+            string hexValue = Chip.programCounter.ToString("X");
+
+            if (hexValue.Length > 4)
+                hexValue = hexValue.Substring(hexValue.Length - 4);
+
+            programCounter_Value.Text = hexValue;
         }
 
         private void UpdateStackPointerWindow()
         {
-            stackPointer_Value.Text = Chip.stackPointer.ToString();
+            string hexValue = Chip.stackPointer.ToString("X");
+
+            if (hexValue.Length > 4)
+                hexValue = hexValue.Substring(hexValue.Length - 4);
+
+            stackPointer_Value.Text = hexValue;
         }
 
         private void UpdateMemoryWindow()
@@ -156,7 +182,12 @@ namespace _8080
                     }
                     else
                     {
-                        dt.Rows[i][j] = Chip.memory[address];
+                        string hexValue = Chip.memory[address].ToString("X");
+
+                        if (hexValue.Length > 2)
+                            hexValue = hexValue.Substring(hexValue.Length - 2);
+
+                        dt.Rows[i][j] = hexValue;
                         address++;
                     }
                 }

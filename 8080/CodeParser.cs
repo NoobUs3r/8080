@@ -142,7 +142,7 @@ namespace _8080
             return "NO MATCH";
         }
 
-        public static string ExecuteInstructionMethod(string instr, string text)
+        /*public static string ExecuteInstructionMethod(string instr, string text)
         {
             string errorMessage = string.Empty;
 
@@ -277,14 +277,14 @@ namespace _8080
 
                 int value = Instructions.ConvertValueOperandToDecimal(text);
 
-                if (!Instructions.IsValueInOneByteRangeTwosComplement(value))
+                if (!Instructions.IsValueInOneByteRange(value))
                     return "ERROR: Invalid ADI value";
 
                 return Instructions.ADI_Instr(value);
             }
             else
                 return "ERROR: Instruction not found";
-        }
+        }*/
 
         private static string LoadInstructionToMemory(string instr, string text)
         {
@@ -301,7 +301,7 @@ namespace _8080
                 Chip.memory[Chip.programCounter] = instructionCodeInt;
                 return "Success";
             }
-            else if (Instructions.IsOpLabSingleReg(instr))
+            else if (instr == "INR" || instr == "DCR")
             {
                 if (!Chip.RegCode.ContainsKey(text))
                     return $"ERROR: Invalid {instr} operand";
@@ -332,7 +332,7 @@ namespace _8080
                 Chip.memory[Chip.programCounter] = instructionCodeInt;
                 return "Success";
             }
-            else if (Instructions.IsOpLabDataTransfer(instr))
+            else if (instr == "STAX" || instr == "LDAX")
             {
                 string bit = string.Empty;
 
@@ -372,7 +372,7 @@ namespace _8080
                 Chip.memory[Chip.programCounter] = instructionCodeInt;
                 return "Success";
             }
-            else if (instr == "PUSH")
+            else if (instr == "PUSH" || instr == "POP")
             {
                 string regPairCode = string.Empty;
 
@@ -387,34 +387,14 @@ namespace _8080
                 else
                     return $"ERROR: Invalid {instr} operand";
 
-                string instructionCode = "11" + regPairCode + "0101";
+                string opLabCode = Chip.RegCode[instr];
+                string instructionCode = "11" + regPairCode + opLabCode;
                 int instructionCodeInt = ConvertBinaryStringToInt(instructionCode);
 
                 Chip.memory[Chip.programCounter] = instructionCodeInt;
                 return "Success";
             }
-            else if (instr == "POP")
-            {
-                string regPairCode = string.Empty;
-
-                if (text == "B")
-                    regPairCode = "00";
-                else if (text == "D")
-                    regPairCode = "01";
-                else if (text == "H")
-                    regPairCode = "10";
-                else if (text == "PSW")
-                    regPairCode = "11";
-                else
-                    return $"ERROR: Invalid {instr} operand";
-
-                string instructionCode = "11" + regPairCode + "0001";
-                int instructionCodeInt = ConvertBinaryStringToInt(instructionCode);
-
-                Chip.memory[Chip.programCounter] = instructionCodeInt;
-                return "Success";
-            }
-            else if (instr == "DAD")
+            else if (instr == "DAD" || instr == "INX" || instr == "DCX")
             {
                 string regPairCode = string.Empty;
 
@@ -429,76 +409,121 @@ namespace _8080
                 else
                     return $"ERROR: Invalid {instr} operand";
 
-                string instructionCode = "00" + regPairCode + "1001";
+                string opLabCode = Chip.RegCode[text];
+                string instructionCode = "00" + regPairCode + opLabCode;
                 int instructionCodeInt = ConvertBinaryStringToInt(instructionCode);
 
                 Chip.memory[Chip.programCounter] = instructionCodeInt;
                 return "Success";
             }
-            else if (instr == "INX")
+            else if (instr == "LXI")
             {
+                string[] operands = Instructions.SplitOperands(text, ref errorMessage);
+                string operand1 = operands[0];
+                string operand2 = operands[1];
+
+                if (errorMessage != string.Empty)
+                    return errorMessage;
+                else if (!Instructions.IsValueOperandFormatValid(operand2))
+                    return $"ERROR: Invalid {instr} operand format";
+
+                int operand2_Int = Instructions.ConvertValueOperandToDecimal(operand2);
+                int[] highAndLowValues = Instructions.Extract8BitHighAndLowValues(operand2_Int);
+                int lowByteValue = highAndLowValues[0];
+                int highByteValue = highAndLowValues[1];
+
                 string regPairCode = string.Empty;
 
-                if (text == "B")
+                if (operand1 == "B")
                     regPairCode = "00";
-                else if (text == "D")
+                else if (operand1 == "D")
                     regPairCode = "01";
-                else if (text == "H")
+                else if (operand1 == "H")
                     regPairCode = "10";
-                else if (text == "SP")
+                else if (operand1 == "SP")
                     regPairCode = "11";
                 else
                     return $"ERROR: Invalid {instr} operand";
 
-                string instructionCode = "00" + regPairCode + "0011";
+                string instructionCode = "00" + regPairCode + "0001";
                 int instructionCodeInt = ConvertBinaryStringToInt(instructionCode);
-
                 Chip.memory[Chip.programCounter] = instructionCodeInt;
+
+                if (!Instructions.IsValueInOneByteRange(highByteValue) || !Instructions.IsValueInOneByteRange(lowByteValue))
+                    return $"ERROR: Invalid {instr} operands";
+
+                Chip.memory[Chip.programCounter + 1] = highByteValue;
+                Chip.memory[Chip.programCounter + 2] = lowByteValue;
                 return "Success";
             }
-            else if (instr == "DCX")
+            else if (instr == "MVI")
             {
-                string regPairCode = string.Empty;
+                string[] operands = Instructions.SplitOperands(text, ref errorMessage);
+                string operand1 = operands[0];
+                string operand2 = operands[1];
 
-                if (text == "B")
-                    regPairCode = "00";
-                else if (text == "D")
-                    regPairCode = "01";
-                else if (text == "H")
-                    regPairCode = "10";
-                else if (text == "SP")
-                    regPairCode = "11";
-                else
-                    return $"ERROR: Invalid {instr} operand";
+                if (errorMessage != string.Empty)
+                    return errorMessage;
+                else if (!Instructions.IsValueOperandFormatValid(operand2))
+                    return "ERROR: Invalid MVI operand value";
 
-                string instructionCode = "00" + regPairCode + "1011";
+                int operand2_Int = Instructions.ConvertValueOperandToDecimal(operand2);
+
+                if (!Chip.RegCode.ContainsKey(operand1) || // First operand must be register
+                    operand2_Int == -1 || // Second operand must have correct value
+                    !Instructions.IsValueInOneByteRange(operand2_Int))
+                {
+                    return "ERROR: Invalid MVI operands";
+                }
+
+                string regCode = Chip.RegCode[operand1];
+                string instructionCode = "00" + regCode + "110";
                 int instructionCodeInt = ConvertBinaryStringToInt(instructionCode);
 
                 Chip.memory[Chip.programCounter] = instructionCodeInt;
+                Chip.memory[Chip.programCounter + 1] = operand2_Int;
                 return "Success";
             }
-            else if (instr == "XCHG")
+            else if (Instructions.IsOpLabImmediateInstr(instr))
             {
-                string instructionCode = "11101011";
+                if (!Instructions.IsValueOperandFormatValid(text))
+                    return $"ERROR: Invalid {instr} operand format";
+
+                int value = Instructions.ConvertValueOperandToDecimalTwosComplement(text, ref errorMessage);
+
+                if (errorMessage != string.Empty)
+                    return errorMessage;
+
+                if (!Instructions.IsValueInOneByteRangeTwosComplement(value))
+                    return $"ERROR: Invalid {instr} value";
+
+                string instructionCode = Instructions.opLabPartOrFullCode[instr];
                 int instructionCodeInt = ConvertBinaryStringToInt(instructionCode);
 
                 Chip.memory[Chip.programCounter] = instructionCodeInt;
+                Chip.memory[Chip.programCounter + 1] = value;
                 return "Success";
             }
-            else if (instr == "XTHL")
+            else if (Instructions.IsOpLabDirectAddressing(instr))
             {
-                string instructionCode = "11100011";
+                if (!Instructions.IsValueOperandFormatValid(text))
+                    return $"ERROR: Invalid {instr} operand format";
+
+                int address = Instructions.ConvertValueOperandToDecimal(text);
+                int[] highAndLowBytes = Instructions.Extract8BitHighAndLowValues(address);
+                int lowByteValue = highAndLowBytes[0];
+                int highByteValue = highAndLowBytes[1];
+
+                if (!Instructions.IsValueInOneByteRange(highByteValue) || !Instructions.IsValueInOneByteRange(lowByteValue))
+                    return $"ERROR: Invalid {instr} operands";
+
+                string opLabCode = Instructions.opLabPartOrFullCode[instr];
+                string instructionCode = "001" + opLabCode + "010";
                 int instructionCodeInt = ConvertBinaryStringToInt(instructionCode);
 
                 Chip.memory[Chip.programCounter] = instructionCodeInt;
-                return "Success";
-            }
-            else if (instr == "SPHL")
-            {
-                string instructionCode = "11111001";
-                int instructionCodeInt = ConvertBinaryStringToInt(instructionCode);
-
-                Chip.memory[Chip.programCounter] = instructionCodeInt;
+                Chip.memory[Chip.programCounter + 1] = lowByteValue;
+                Chip.memory[Chip.programCounter + 1] = highByteValue;
                 return "Success";
             }
 
@@ -528,21 +553,16 @@ namespace _8080
                 Chip.programCounter++;
                 return "Success";
             }
-            else if (opBinaryString.StartsWith("00") && opBinaryString.EndsWith("100"))
+            else if (opBinaryString.StartsWith("00") && (opBinaryString.EndsWith("100") || opBinaryString.EndsWith("101")))
             {
                 string regCode = opBinaryString.Substring(2, 3);
                 string reg = Chip.RegCode.FirstOrDefault(x => x.Value == regCode).Key;
-
                 Chip.programCounter++;
-                return Instructions.INR_Instr(reg);
-            }
-            else if (opBinaryString.StartsWith("00") && opBinaryString.EndsWith("101"))
-            {
-                string regCode = opBinaryString.Substring(2, 3);
-                string reg = Chip.RegCode.FirstOrDefault(x => x.Value == regCode).Key;
 
-                Chip.programCounter++;
-                return Instructions.DCR_Instr(reg);
+                if (opBinaryString.EndsWith("100"))
+                    return Instructions.INR_Instr(reg);
+                else if (opBinaryString.EndsWith("101"))
+                    return Instructions.DCR_Instr(reg);
             }
             else if (opBinaryString == "00101111") // CMA
             {
@@ -587,71 +607,71 @@ namespace _8080
                 else if (opLab == "11")
                     return Instructions.RAR_Instr();
             }
-            else if (opBinaryString.StartsWith("000") && opBinaryString.EndsWith("0010"))
+            else if (opBinaryString.StartsWith("000") && (opBinaryString.EndsWith("0010") || opBinaryString.EndsWith("1010")))
             {
                 string reg = "B";
+                Chip.programCounter++;
 
                 if (opBinaryString[3] == '1')
                     reg = "D";
 
-                Chip.programCounter++;
-                return Instructions.STAX_Instr(reg);
+                if (opBinaryString.EndsWith("0010"))
+                    return Instructions.STAX_Instr(reg);
+                else if (opBinaryString.EndsWith("1010"))
+                    return Instructions.LDAX_Instr(reg);
             }
-            else if (opBinaryString.StartsWith("000") && opBinaryString.EndsWith("1010"))
-            {
-                string reg = "B";
-
-                if (opBinaryString[3] == '1')
-                    reg = "D";
-
-                Chip.programCounter++;
-                return Instructions.LDAX_Instr(reg);
-            }
-            else if (opBinaryString.StartsWith("10")) 
+            else if (opBinaryString.StartsWith("10"))
             {
                 string opLab = opBinaryString.Substring(2, 3);
                 string regCode = opBinaryString.Substring(5, 3);
                 string reg = Chip.RegCode.FirstOrDefault(x => x.Value == regCode).Key;
+                int value = Chip.registers[reg];
 
                 Chip.programCounter++;
 
-                if (opLab == "000")
-                    return Instructions.ADD_Instr(reg);
-                else if (opLab == "001") // ADC
+                if (opLab == "000") // ADD
+                    return Instructions.ADI_Instr(value);
+                else if (opLab == "010") // SUB
+                    return Instructions.SUI_Instr(value);
+                else if (opLab == "111") // CMP
+                    return Instructions.CPI_Instr(value);
+                else if (opLab == "001" || opLab == "011")
                 {
                     if (Chip.conditionalBits["CarryBit"])
-                        Chip.registers["A"]++;
+                        value++;
 
-                    if (!Instructions.IsValueInOneByteRange(Chip.registers["A"]))
-                        Chip.registers["A"] = Instructions.NormalizeOneByteValue(Chip.registers["A"]);
+                    if (!Instructions.IsValueInOneByteRangeTwosComplement(value))
+                        value = Instructions.NormalizeOneByteValueTwosComplement(value);
 
-                    return Instructions.ADD_Instr(reg);
+                    if (opLab == "001") // ADC
+                        return Instructions.ADD_Instr(reg);
+                    else if (opLab == "011") // SBB
+                        return Instructions.SUI_Instr(value);
                 }
-                else if (opLab == "010")
-                    return Instructions.SUB_Instr(reg);
-                else if (opLab == "011") // SBB | REPLACE WITH SUBI
+                else if (opLab == "100" || opLab == "101" || opLab == "110")
                 {
-                    if (Chip.conditionalBits["CarryBit"])
-                        Instructions.DCR_Instr("A");
+                    if (Chip.registers.ContainsKey(reg))
+                        value = Chip.registers[reg];
+                    else
+                    {
+                        int mAddress = Instructions.GetM();
+                        value = Chip.memory[mAddress];
+                    }
 
-                    if (!Instructions.IsValueInOneByteRange(Chip.registers["A"]))
-                        Chip.registers["A"] = Instructions.NormalizeOneByteValue(Chip.registers["A"]);
-
-                    return Instructions.SUB_Instr(reg);
+                    if (opLab == "100") // ANA
+                        return Instructions.ANI_Instr(value);
+                    else if (opLab == "101") // XRA
+                        return Instructions.XRI_Instr(value);
+                    else if (opLab == "110") // ORA
+                        return Instructions.ORI_Instr(value);
                 }
-                else if (opLab == "100")
-                    return Instructions.ANA_Instr(reg);
-                else if (opLab == "101")
-                    return Instructions.XRA_Instr(reg);
-                else if (opLab == "110")
-                    return Instructions.ORA_Instr(reg);
-                else if (opLab == "111")
-                    return Instructions.CMP_Instr(reg);
             }
-            else if (opBinaryString.StartsWith("11") && opBinaryString.EndsWith("0101")) // PUSH
+            else if (opBinaryString.StartsWith("11") && 
+                    (opBinaryString.EndsWith("0101") ||  opBinaryString.EndsWith("0001")))
             {
                 string regPairCode = opBinaryString.Substring(2, 2);
                 string regPair = string.Empty;
+                Chip.programCounter++;
 
                 if (regPairCode == "00")
                     regPair = "B";
@@ -662,30 +682,18 @@ namespace _8080
                 else
                     regPair = "PSW";
 
-                Chip.programCounter++;
-                return Instructions.PUSH_Instr(regPair);
+                if (opBinaryString.EndsWith("0101")) // PUSH
+                    return Instructions.PUSH_Instr(regPair);
+                else if (opBinaryString.EndsWith("0001")) // POP
+                    return Instructions.POP_Instr(regPair);
             }
-            else if (opBinaryString.StartsWith("11") && opBinaryString.EndsWith("0001")) // POP
-            {
+            else if (opBinaryString.StartsWith("00") && 
+                    (opBinaryString.EndsWith("0011") || opBinaryString.EndsWith("1011") || 
+                     opBinaryString.EndsWith("1001") || opBinaryString.EndsWith("0001")))
+            { 
                 string regPairCode = opBinaryString.Substring(2, 2);
                 string regPair = string.Empty;
-
-                if (regPairCode == "00")
-                    regPair = "B";
-                else if (regPairCode == "01")
-                    regPair = "D";
-                else if (regPairCode == "10")
-                    regPair = "H";
-                else
-                    regPair = "PSW";
-
                 Chip.programCounter++;
-                return Instructions.POP_Instr(regPair);
-            }
-            else if (opBinaryString.StartsWith("00") && opBinaryString.EndsWith("1001")) // DAD
-            {
-                string regPairCode = opBinaryString.Substring(2, 2);
-                string regPair = string.Empty;
 
                 if (regPairCode == "00")
                     regPair = "B";
@@ -696,42 +704,19 @@ namespace _8080
                 else
                     regPair = "SP";
 
-                Chip.programCounter++;
-                return Instructions.DAD_Instr(regPair);
-            }
-            else if (opBinaryString.StartsWith("00") && opBinaryString.EndsWith("0011")) // INX
-            {
-                string regPairCode = opBinaryString.Substring(2, 2);
-                string regPair = string.Empty;
-
-                if (regPairCode == "00")
-                    regPair = "B";
-                else if (regPairCode == "01")
-                    regPair = "D";
-                else if (regPairCode == "10")
-                    regPair = "H";
-                else
-                    regPair = "SP";
-
-                Chip.programCounter++;
-                return Instructions.INX_Instr(regPair);
-            }
-            else if (opBinaryString.StartsWith("00") && opBinaryString.EndsWith("1011")) // DCX
-            {
-                string regPairCode = opBinaryString.Substring(2, 2);
-                string regPair = string.Empty;
-
-                if (regPairCode == "00")
-                    regPair = "B";
-                else if (regPairCode == "01")
-                    regPair = "D";
-                else if (regPairCode == "10")
-                    regPair = "H";
-                else
-                    regPair = "SP";
-
-                Chip.programCounter++;
-                return Instructions.DCX_Instr(regPair);
+                if (opBinaryString.EndsWith("0011")) // INX
+                    return Instructions.INX_Instr(regPair);
+                else if (opBinaryString.EndsWith("1011")) // DCX
+                    return Instructions.DCX_Instr(regPair);
+                else if (opBinaryString.EndsWith("1001")) // DAD
+                    return Instructions.DAD_Instr(regPair);
+                else if (opBinaryString.EndsWith("0001")) // LXI
+                {
+                    int lowByteValue = Chip.memory[++Chip.programCounter];
+                    int highByteValue = Chip.memory[++Chip.programCounter];
+                    Chip.programCounter++;
+                    return Instructions.LXI_Instr(regPair, highByteValue, lowByteValue);
+                }
             }
             else if (opBinaryString == "11101011") // XCHG
             {
@@ -765,10 +750,90 @@ namespace _8080
             else if (opBinaryString == "11111001") // STHL
             {
                 Chip.stackPointer = Instructions.GetM();
-
                 Chip.programCounter++;
                 return "Success";
             }
+            else if (opBinaryString.StartsWith("00") && opBinaryString.EndsWith("0001")) // LXI
+            {
+                string regPairCode = opBinaryString.Substring(2, 2);
+                string regPair = string.Empty;
+
+                if (regPairCode == "00")
+                    regPair = "B";
+                else if (regPairCode == "01")
+                    regPair = "D";
+                else if (regPairCode == "10")
+                    regPair = "H";
+                else
+                    regPair = "SP";
+
+                int highByteValue = Chip.memory[++Chip.programCounter];
+                int lowByteValue = Chip.memory[++Chip.programCounter];
+                Chip.programCounter++;
+                return Instructions.LXI_Instr(regPair, highByteValue, lowByteValue);
+            }
+            else if (opBinaryString.StartsWith("00") && opBinaryString.EndsWith("110")) // MVI
+            {
+                string regCode = opBinaryString.Substring(2, 3);
+                string reg = Chip.RegCode.FirstOrDefault(x => x.Value == regCode).Key;
+                int value = Chip.memory[++Chip.programCounter];
+
+                Chip.programCounter++;
+                return Instructions.MVI_Instr(reg, value);
+            }
+            else if (opBinaryString.StartsWith("11") && opBinaryString.EndsWith("110"))
+            {
+                string opCode = opBinaryString.Substring(2, 3);
+                int value = Chip.memory[++Chip.programCounter];
+                Chip.programCounter++;
+
+                if (opCode == "000") // ADI
+                    return Instructions.ADI_Instr(value);
+                else if (opCode == "001" || opCode == "011")
+                {
+                    if (Chip.conditionalBits["CarryBit"])
+                        value++;
+
+                    if (!Instructions.IsValueInOneByteRangeTwosComplement(value))
+                        value = Instructions.NormalizeOneByteValueTwosComplement(value);
+
+                    if (opCode == "001") // ACI
+                        return Instructions.ADI_Instr(value);
+                    else if (opCode == "011") // SBI
+                        return Instructions.SUI_Instr(value);
+                }
+                else if (opCode == "010") // SUI
+                    return Instructions.SUI_Instr(value);
+                else if (opCode == "100") // ANI
+                    return Instructions.ANI_Instr(value);
+                else if (opCode == "101") // XRI
+                    return Instructions.XRI_Instr(value);
+                else if (opCode == "110") // ORI
+                    return Instructions.ORI_Instr(value);
+                else if (opCode == "111") // CPI
+                    return Instructions.CPI_Instr(value);
+            }
+            else if (opBinaryString.StartsWith("001") && opBinaryString.EndsWith("010"))
+            {
+                string opCode = opBinaryString.Substring(3, 2);
+                int lowByteValue = Chip.memory[++Chip.programCounter];
+                int highByteValue = Chip.memory[++Chip.programCounter];
+                int address = Instructions.Concat8BitIntValues(highByteValue, lowByteValue);
+                Chip.programCounter++;
+
+                if (!Instructions.IsValueInTwoBytesRange(address))
+                    return $"ERROR: Invalid address";
+
+                if (opCode == "10") // STA
+                    return Instructions.STA_Instr(address);
+                else if (opCode == "11") // LDA
+                    return Instructions.LDA_Instr(address);
+                else if (opCode == "00") // SHLD
+                    return Instructions.SHLD_Instr(address);
+                else if (opCode == "01") // LHLD
+                    return Instructions.LHLD_Instr(address);
+            }
+
 
             return "";
         }
