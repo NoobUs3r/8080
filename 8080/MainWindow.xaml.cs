@@ -69,10 +69,31 @@ namespace _8080
         private void RunButton_Click(object sender, RoutedEventArgs e)
         {
             ClearButton_Click(sender, e);
-            string parserMessage = CodeParser.CheckCodeForErrorsAndExecute(CodeBox.Text);
+            string parserMessage = CodeParser.CheckCodeForErrorsAndWriteToMemory(CodeBox.Text);
+            Chip.programCounter = 0;
 
             if (parserMessage != "Success")
+            {
                 MessageBox.Show(parserMessage);
+                return;
+            }
+
+            while (Chip.programCounter < 65535 )
+            {
+                string executerMessage = CodeParser.ExecuteFromMemoryOnCounter();
+
+                if (executerMessage != "Success")
+                {
+                    MessageBox.Show(executerMessage);
+                    return;
+                }
+
+                if (Chip.memory[Chip.programCounter] == 118) // HLT
+                {
+                    Chip.programCounter++;
+                    break;
+                }
+            }
 
             UpdateRegWindows();
             UpdateConBitWindows();

@@ -22,9 +22,11 @@ namespace _8080
             { "XRI", "11101110" },
             { "ORI", "11110110" },
             { "CPI", "11111110" },
+            { "HLT", "01110110" },
             { "XCHG", "11101011" },
             { "XTHL", "11100011" },
             { "SPHL", "11111001" },
+            { "PCHL", "11101001" },
             { "STAX", "0010" },
             { "LDAX", "1010" },
             { "PUSH", "0101" },
@@ -44,6 +46,15 @@ namespace _8080
             { "CMP", "111" },
             { "SHLD", "00" },
             { "LHLD", "01" },
+            { "JMP", "000" },
+            { "JNC", "010" },
+            { "JNZ", "000" },
+            { "JPE", "101" },
+            { "JPO", "100" },
+            { "JC", "011" },
+            { "JZ", "001" },
+            { "JM", "111" },
+            { "JP", "110" },
             { "RLC", "00" },
             { "RRC", "01" },
             { "RAL", "10" },
@@ -55,7 +66,7 @@ namespace _8080
         public static bool IsOpLabNoOperand(string opLab)
         {
             if (opLab == "CMC" || opLab == "STC" || opLab == "CMA" || opLab == "DAA" || opLab == "NOP" ||
-                opLab == "XCHG" || opLab == "XTHL" || opLab == "SPHL")
+                opLab == "XCHG" || opLab == "XTHL" || opLab == "SPHL" || opLab == "PCHL" || opLab == "HLT")
                 return true;
 
             return false;
@@ -90,6 +101,15 @@ namespace _8080
         public static bool IsOpLabDirectAddressing(string opLab)
         {
             if (opLab == "STA" || opLab == "LDA" || opLab == "SHLD" || opLab == "LHLD")
+                return true;
+
+            return false;
+        }
+
+        public static bool IsOpLabJump(string opLab)
+        {
+            if (opLab == "JMP" || opLab == "JC" || opLab == "JNC" || opLab == "JZ" || opLab == "JNZ" ||
+                opLab == "JM" || opLab == "JP" || opLab == "JPE" || opLab == "JPO")
                 return true;
 
             return false;
