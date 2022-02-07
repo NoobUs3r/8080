@@ -551,6 +551,49 @@ namespace _8080
                 Chip.memory[Chip.programCounter++] = highByteValue;
                 return "Success";
             }
+            else if (Instructions.IsOpLabCall(instr))
+            {
+                if (!Instructions.IsValueOperandFormatValid(text))
+                    return $"ERROR: Invalid {instr} operand format";
+
+                int text_Int = Instructions.ConvertValueOperandToDecimal(text);
+                int[] highAndLowValues = Instructions.Extract8BitHighAndLowValues(text_Int);
+                int highByteValue = highAndLowValues[0];
+                int lowByteValue = highAndLowValues[1];
+                string CALL = "0";
+
+                if (!Instructions.IsValueInOneByteRange(highByteValue) || !Instructions.IsValueInOneByteRange(lowByteValue))
+                    return $"ERROR: Invalid {instr} operands";
+
+                if (instr == "CALL")
+                    CALL = "1";
+
+                string opLabCode = Instructions.opLabPartOrFullCode[instr];
+                string instructionCode = "11" + opLabCode + "10" + CALL;
+                int instructionCodeInt = ConvertBinaryStringToInt(instructionCode);
+
+                Chip.memory[Chip.programCounter++] = instructionCodeInt;
+                Chip.memory[Chip.programCounter++] = lowByteValue;
+                Chip.memory[Chip.programCounter++] = highByteValue;
+                return "Success";
+            }
+            else if (Instructions.IsOpLabReturn(instr))
+            {
+                if (text != string.Empty)
+                    return $"ERROR: Invalid {instr} operand";
+
+                string RET = "0";
+
+                if (instr == "RET")
+                    RET = "1";
+
+                string opLabCode = Instructions.opLabPartOrFullCode[instr];
+                string instructionCode = "11" + opLabCode + "00" + RET;
+                int instructionCodeInt = ConvertBinaryStringToInt(instructionCode);
+
+                Chip.memory[Chip.programCounter++] = instructionCodeInt;
+                return "Success";
+            }
 
             return "ERROR: Invalid instruction";
         }
@@ -631,7 +674,7 @@ namespace _8080
                 else if (opLab == "11")
                     return Instructions.RAR_Instr();
             }
-            else if (opBinaryString.StartsWith("000") && 
+            else if (opBinaryString.StartsWith("000") &&
                     (opBinaryString.EndsWith("0010") || opBinaryString.EndsWith("1010")))
             {
                 string reg = "B";
@@ -846,7 +889,7 @@ namespace _8080
                 Chip.programCounter++;
 
                 if (!Instructions.IsValueInTwoBytesRange(address))
-                    return $"ERROR: Invalid address";
+                    return "ERROR: Invalid address";
 
                 if (opCode == "10") // STA
                     return Instructions.STA_Instr(address);
@@ -932,6 +975,230 @@ namespace _8080
                 {
                     if (!Chip.conditionalBits["ParityBit"])
                         Chip.programCounter = address;
+
+                    return "Success";
+                }
+            }
+            else if (opBinaryString.StartsWith("11") &&
+                    (opBinaryString.EndsWith("100") || opBinaryString.EndsWith("101")))
+            {
+                string opCode = opBinaryString.Substring(2, 3);
+                int lowByteValue = Chip.memory[++Chip.programCounter];
+                int highByteValue = Chip.memory[++Chip.programCounter];
+                int address = Instructions.Concat8BitIntValues(highByteValue, lowByteValue);
+                Chip.programCounter++;
+
+                if (Chip.programCounter > 65535)
+                    Chip.programCounter = 0;
+
+                int[] nextAddressHighLowByteValues = Instructions.Extract8BitHighAndLowValues(Chip.programCounter);
+                int nextAddressHighByteValue = nextAddressHighLowByteValues[0];
+                int nextAddressLowByteValue = nextAddressHighLowByteValues[1];
+
+                if (!Instructions.IsValueInTwoBytesRange(address))
+                    return "ERROR: Invalid address";
+
+                if (Chip.stackPointer < 1)
+                    return "ERROR: StackPointer value is too low";
+
+                if (opCode == "001" && opBinaryString.EndsWith("1")) // CALL
+                {
+                    Chip.memory[--Chip.stackPointer] = nextAddressHighByteValue;
+                    Chip.memory[--Chip.stackPointer] = nextAddressLowByteValue;
+                    Chip.programCounter = address;
+                    return "Success";
+                }
+                else if (opCode == "011") // CC
+                {
+                    if (Chip.conditionalBits["CarryBit"])
+                    {
+                        Chip.memory[--Chip.stackPointer] = nextAddressHighByteValue;
+                        Chip.memory[--Chip.stackPointer] = nextAddressLowByteValue;
+                        Chip.programCounter = address;
+                    }
+
+                    return "Success";
+                }
+                else if (opCode == "010") // CNC
+                {
+                    if (!Chip.conditionalBits["CarryBit"])
+                    {
+                        Chip.memory[--Chip.stackPointer] = nextAddressHighByteValue;
+                        Chip.memory[--Chip.stackPointer] = nextAddressLowByteValue;
+                        Chip.programCounter = address;
+                    }
+
+                    return "Success";
+                }
+                else if (opCode == "001" && opBinaryString.EndsWith("0")) // CZ
+                {
+                    if (Chip.conditionalBits["ZeroBit"])
+                    {
+                        Chip.memory[--Chip.stackPointer] = nextAddressHighByteValue;
+                        Chip.memory[--Chip.stackPointer] = nextAddressLowByteValue;
+                        Chip.programCounter = address;
+                    }
+
+                    return "Success";
+                }
+                else if (opCode == "000") // CNZ
+                {
+                    if (!Chip.conditionalBits["ZeroBit"])
+                    {
+                        Chip.memory[--Chip.stackPointer] = nextAddressHighByteValue;
+                        Chip.memory[--Chip.stackPointer] = nextAddressLowByteValue;
+                        Chip.programCounter = address;
+                    }
+
+                    return "Success";
+                }
+                else if (opCode == "111") // CM
+                {
+                    if (Chip.conditionalBits["SignBit"])
+                    {
+                        Chip.memory[--Chip.stackPointer] = nextAddressHighByteValue;
+                        Chip.memory[--Chip.stackPointer] = nextAddressLowByteValue;
+                        Chip.programCounter = address;
+                    }
+
+                    return "Success";
+                }
+                else if (opCode == "110") // CP
+                {
+                    if (!Chip.conditionalBits["SignBit"])
+                    {
+                        Chip.memory[--Chip.stackPointer] = nextAddressHighByteValue;
+                        Chip.memory[--Chip.stackPointer] = nextAddressLowByteValue;
+                        Chip.programCounter = address;
+                    }
+
+                    return "Success";
+                }
+                else if (opCode == "101") // CPE
+                {
+                    if (Chip.conditionalBits["ParityBit"])
+                    {
+                        Chip.memory[--Chip.stackPointer] = nextAddressHighByteValue;
+                        Chip.memory[--Chip.stackPointer] = nextAddressLowByteValue;
+                        Chip.programCounter = address;
+                    }
+
+                    return "Success";
+                }
+                else if (opCode == "100") // CPO
+                {
+                    if (!Chip.conditionalBits["ParityBit"])
+                    {
+                        Chip.memory[--Chip.stackPointer] = nextAddressHighByteValue;
+                        Chip.memory[--Chip.stackPointer] = nextAddressLowByteValue;
+                        Chip.programCounter = address;
+                    }
+
+                    return "Success";
+                }
+            }
+            else if (opBinaryString.StartsWith("11") &&
+                    (opBinaryString.EndsWith("000") || opBinaryString.EndsWith("001")))
+            {
+                string opCode = opBinaryString.Substring(2, 3);
+                int nextAddressHighByteValue = -1;
+                int nextAddressLowByteValue = -1;
+
+                if (Chip.stackPointer == 65535)
+                    return "ERROR: Stack is empty";
+
+                if (opCode == "001" && opBinaryString.EndsWith("1")) // RET
+                {
+                    nextAddressLowByteValue = Chip.memory[Chip.stackPointer++];
+                    nextAddressHighByteValue = Chip.memory[Chip.stackPointer];
+                    Chip.programCounter = Instructions.Concat8BitIntValues(nextAddressHighByteValue, nextAddressLowByteValue);
+                    return "Success";
+                }
+                else if (opCode == "011") // RC
+                {
+                    if (Chip.conditionalBits["CarryBit"])
+                    {
+                        nextAddressLowByteValue = Chip.memory[Chip.stackPointer++];
+                        nextAddressHighByteValue = Chip.memory[Chip.stackPointer];
+                        Chip.programCounter = Instructions.Concat8BitIntValues(nextAddressHighByteValue, nextAddressLowByteValue);
+                    }
+
+                    return "Success";
+                }
+                else if (opCode == "010") // RNC
+                {
+                    if (!Chip.conditionalBits["CarryBit"])
+                    {
+                        nextAddressLowByteValue = Chip.memory[Chip.stackPointer++];
+                        nextAddressHighByteValue = Chip.memory[Chip.stackPointer];
+                        Chip.programCounter = Instructions.Concat8BitIntValues(nextAddressHighByteValue, nextAddressLowByteValue);
+                    }
+
+                    return "Success";
+                }
+                else if (opCode == "001" && opBinaryString.EndsWith("0")) // RZ
+                {
+                    if (Chip.conditionalBits["ZeroBit"])
+                    {
+                        nextAddressLowByteValue = Chip.memory[Chip.stackPointer++];
+                        nextAddressHighByteValue = Chip.memory[Chip.stackPointer];
+                        Chip.programCounter = Instructions.Concat8BitIntValues(nextAddressHighByteValue, nextAddressLowByteValue);
+                    }
+
+                    return "Success";
+                }
+                else if (opCode == "000") // RNZ
+                {
+                    if (!Chip.conditionalBits["ZeroBit"])
+                    {
+                        nextAddressLowByteValue = Chip.memory[Chip.stackPointer++];
+                        nextAddressHighByteValue = Chip.memory[Chip.stackPointer];
+                        Chip.programCounter = Instructions.Concat8BitIntValues(nextAddressHighByteValue, nextAddressLowByteValue);
+                    }
+
+                    return "Success";
+                }
+                else if (opCode == "111") // RM
+                {
+                    if (Chip.conditionalBits["SignBit"])
+                    {
+                        nextAddressLowByteValue = Chip.memory[Chip.stackPointer++];
+                        nextAddressHighByteValue = Chip.memory[Chip.stackPointer];
+                        Chip.programCounter = Instructions.Concat8BitIntValues(nextAddressHighByteValue, nextAddressLowByteValue);
+                    }
+
+                    return "Success";
+                }
+                else if (opCode == "110") // RP
+                {
+                    if (!Chip.conditionalBits["SignBit"])
+                    {
+                        nextAddressLowByteValue = Chip.memory[Chip.stackPointer++];
+                        nextAddressHighByteValue = Chip.memory[Chip.stackPointer];
+                        Chip.programCounter = Instructions.Concat8BitIntValues(nextAddressHighByteValue, nextAddressLowByteValue);
+                    }
+
+                    return "Success";
+                }
+                else if (opCode == "101") // RPE
+                {
+                    if (Chip.conditionalBits["ParityBit"])
+                    {
+                        nextAddressLowByteValue = Chip.memory[Chip.stackPointer++];
+                        nextAddressHighByteValue = Chip.memory[Chip.stackPointer];
+                        Chip.programCounter = Instructions.Concat8BitIntValues(nextAddressHighByteValue, nextAddressLowByteValue);
+                    }
+
+                    return "Success";
+                }
+                else if (opCode == "100") // RPO
+                {
+                    if (!Chip.conditionalBits["ParityBit"])
+                    {
+                        nextAddressLowByteValue = Chip.memory[Chip.stackPointer++];
+                        nextAddressHighByteValue = Chip.memory[Chip.stackPointer];
+                        Chip.programCounter = Instructions.Concat8BitIntValues(nextAddressHighByteValue, nextAddressLowByteValue);
+                    }
 
                     return "Success";
                 }

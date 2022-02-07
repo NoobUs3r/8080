@@ -55,6 +55,24 @@ namespace _8080
             { "JZ", "001" },
             { "JM", "111" },
             { "JP", "110" },
+            { "CALL", "001" },
+            { "CNC", "010" },
+            { "CNZ", "000" },
+            { "CPE", "101" },
+            { "CPO", "100" },
+            { "CC", "011" },
+            { "CZ", "001" },
+            { "CM", "111" },
+            { "CP", "110" },
+            { "RET", "001" },
+            { "RNC", "010" },
+            { "RNZ", "000" },
+            { "RPE", "101" },
+            { "RPO", "100" },
+            { "RC", "011" },
+            { "RZ", "001" },
+            { "RM", "111" },
+            { "RP", "110" },
             { "RLC", "00" },
             { "RRC", "01" },
             { "RAL", "10" },
@@ -110,6 +128,24 @@ namespace _8080
         {
             if (opLab == "JMP" || opLab == "JC" || opLab == "JNC" || opLab == "JZ" || opLab == "JNZ" ||
                 opLab == "JM" || opLab == "JP" || opLab == "JPE" || opLab == "JPO")
+                return true;
+
+            return false;
+        }
+
+        public static bool IsOpLabCall(string opLab)
+        {
+            if (opLab == "CALL" || opLab == "CC" || opLab == "CNC" || opLab == "CZ" || opLab == "CNZ" ||
+                opLab == "CM" || opLab == "CP" || opLab == "CPE" || opLab == "CPO")
+                return true;
+
+            return false;
+        }
+
+        public static bool IsOpLabReturn(string opLab)
+        {
+            if (opLab == "RET" || opLab == "RC" || opLab == "RNC" || opLab == "RZ" || opLab == "RNZ" ||
+                opLab == "RM" || opLab == "RP" || opLab == "RPE" || opLab == "RPO")
                 return true;
 
             return false;
@@ -707,6 +743,7 @@ namespace _8080
                 return "Success";
             }
         }
+
         public static string POP_Instr(string reg)
         {
             if (Chip.stackPointer > 65533)
