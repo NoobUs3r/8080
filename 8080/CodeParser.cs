@@ -142,150 +142,6 @@ namespace _8080
             return "NO MATCH";
         }
 
-        /*public static string ExecuteInstructionMethod(string instr, string text)
-        {
-            string errorMessage = string.Empty;
-
-            if (instr == "MOV")
-            {
-                string[] operands = Instructions.SplitOperands(text, ref errorMessage);
-                string operand1 = operands[0];
-                string operand2 = operands[1];
-
-                if (errorMessage != string.Empty)
-                    return errorMessage;
-                else if (!Instructions.IsOperandValid(operand1) || !Instructions.IsOperandValid(operand2))
-                    return "ERROR: Invalid MOV operands";
-
-                return Instructions.MOV_Instr(operand1, operand2);
-            }
-            else if (instr == "MVI")
-            {
-                string[] operands = Instructions.SplitOperands(text, ref errorMessage);
-                string operand1 = operands[0];
-                string operand2 = operands[1];
-                int operand2_Int = Instructions.ConvertValueOperandToDecimal(operand2);
-
-                if (errorMessage != string.Empty)
-                    return errorMessage;
-                else if (!Instructions.IsValueOperandFormatValid(operand2))
-                    return "ERROR: Invalid MVI operand value";
-                else if (!Chip.registers.ContainsKey(operand1) || // First operand must be register
-                         operand2_Int == -1 || // Second operand must have correct value
-                         !Instructions.IsValueInOneByteRange(operand2_Int))
-                    return "ERROR: Invalid MVI operands";
-
-                return Instructions.MVI_Instr(operand1, operand2_Int);
-            }
-            else if (instr == "LXI")
-            {
-                string[] operands = Instructions.SplitOperands(text, ref errorMessage);
-                string operand1 = operands[0] == "M" ? "H" : operands[0];
-                string operand2 = operands[1];
-
-                if (errorMessage != string.Empty)
-                    return errorMessage;
-                else if (!Instructions.IsValueOperandFormatValid(operand2))
-                    return "ERROR: Invalid LXI operand format";
-
-                int operand2_Int = Instructions.ConvertValueOperandToDecimal(operand2);
-                int[] highAndLowValues = Instructions.Extract8BitHighAndLowValues(operand2_Int);
-                int highValue = highAndLowValues[0];
-                int lowValue = highAndLowValues[1];
-
-                if (operand1 != "B" && operand1 != "D" && operand1 != "H" || // First operand must be B, D or H
-                    !Instructions.IsValueInOneByteRange(highValue) || !Instructions.IsValueInOneByteRange(lowValue))
-                {
-                    return "ERROR: Invalid LXI operands";
-                }
-
-                return Instructions.LXI_Instr(operand1, highValue, lowValue);
-            }
-            else if (instr == "LDA")
-            {
-                if (!Instructions.IsValueOperandFormatValid(text))
-                    return "ERROR: Invalid LDA operand format";
-
-                int address = Instructions.ConvertValueOperandToDecimal(text);
-
-                if (!Instructions.IsValueInOneByteRange(address))
-                    return "ERROR: Invalid LDA address";
-
-                return Instructions.LDA_Instr(address);
-            }
-            else if (instr == "STA")
-            {
-                if (!Instructions.IsValueOperandFormatValid(text))
-                    return "ERROR: Invalid STA operand format";
-
-                int address = Instructions.ConvertValueOperandToDecimal(text);
-                return Instructions.STA_Instr(address);
-            }
-            else if (instr == "LHLD")
-            {
-                if (!Instructions.IsValueOperandFormatValid(text))
-                    return "ERROR: Invalid LHLD operand format";
-
-                int address = Instructions.ConvertValueOperandToDecimal(text);
-                int maxAddress = Chip.memory.Length - 1;
-
-                if (address == maxAddress - 1)
-                    return "ERROR: Invalid LHLD address";
-
-                return Instructions.LHLD_Instr(address);
-            }
-            else if (instr == "SHLD")
-            {
-                if (!Instructions.IsValueOperandFormatValid(text))
-                    return "ERROR: Invalid SHLD operand format";
-
-                int address = Instructions.ConvertValueOperandToDecimal(text);
-                int maxAddress = Chip.memory.Length - 1;
-
-                if (address == maxAddress - 1 || address < 0)
-                    return "ERROR: Invalid SHLD address";
-
-                return Instructions.SHLD_Instr(address);
-            }
-            else if (instr == "XCHG")
-            {
-                if (text != string.Empty)
-                    return "ERROR: Invalid XCHG operands";
-
-                return Instructions.XCHG_Instr();
-            }
-            else if (instr == "ADD")
-            {
-                if (!Chip.registers.ContainsKey(text))
-                {
-                    if (text != "M")
-                        return "ERROR: Invalid ADD operands";
-
-                    int maxAddress = Chip.memory.Length - 1;
-                    int textInt = Instructions.GetM();
-
-                    if (textInt > maxAddress || textInt < 0)
-                        return "ERROR: Invalid ADD address";
-                }
-
-                return Instructions.ADD_Instr(text);
-            }
-            else if (instr == "ADI")
-            {
-                if (!Instructions.IsValueOperandFormatValid(text))
-                    return "ERROR: Invalid ADI operand format";
-
-                int value = Instructions.ConvertValueOperandToDecimal(text);
-
-                if (!Instructions.IsValueInOneByteRange(value))
-                    return "ERROR: Invalid ADI value";
-
-                return Instructions.ADI_Instr(value);
-            }
-            else
-                return "ERROR: Instruction not found";
-        }*/
-
         private static string LoadInstructionToMemory(string instr, string text)
         {
             string errorMessage = string.Empty;
@@ -707,11 +563,14 @@ namespace _8080
                     if (Chip.conditionalBits["CarryBit"])
                         value++;
 
-                    if (!Instructions.IsValueInOneByteRangeTwosComplement(value))
-                        value = Instructions.NormalizeOneByteValueTwosComplement(value);
+                    if (!Instructions.IsValueInOneByteRange(value))
+                        value = Instructions.NormalizeOneByteValue(value);
+
+                    //if (!Instructions.IsValueInOneByteRangeTwosComplement(value))
+                    //value = Instructions.NormalizeOneByteValueTwosComplement(value);
 
                     if (opLab == "001") // ADC
-                        return Instructions.ADD_Instr(reg);
+                        return Instructions.ADI_Instr(value);
                     else if (opLab == "011") // SBB
                         return Instructions.SUI_Instr(value);
                 }
@@ -991,10 +850,6 @@ namespace _8080
                 if (Chip.programCounter > 65535)
                     Chip.programCounter = 0;
 
-                int[] nextAddressHighLowByteValues = Instructions.Extract8BitHighAndLowValues(Chip.programCounter);
-                int nextAddressHighByteValue = nextAddressHighLowByteValues[0];
-                int nextAddressLowByteValue = nextAddressHighLowByteValues[1];
-
                 if (!Instructions.IsValueInTwoBytesRange(address))
                     return "ERROR: Invalid address";
 
@@ -1003,96 +858,62 @@ namespace _8080
 
                 if (opCode == "001" && opBinaryString.EndsWith("1")) // CALL
                 {
-                    Chip.memory[--Chip.stackPointer] = nextAddressHighByteValue;
-                    Chip.memory[--Chip.stackPointer] = nextAddressLowByteValue;
-                    Chip.programCounter = address;
+                    Instructions.CALL_Instr(Chip.programCounter, address);
                     return "Success";
                 }
                 else if (opCode == "011") // CC
                 {
                     if (Chip.conditionalBits["CarryBit"])
-                    {
-                        Chip.memory[--Chip.stackPointer] = nextAddressHighByteValue;
-                        Chip.memory[--Chip.stackPointer] = nextAddressLowByteValue;
-                        Chip.programCounter = address;
-                    }
+                        Instructions.CALL_Instr(Chip.programCounter, address);
 
                     return "Success";
                 }
                 else if (opCode == "010") // CNC
                 {
                     if (!Chip.conditionalBits["CarryBit"])
-                    {
-                        Chip.memory[--Chip.stackPointer] = nextAddressHighByteValue;
-                        Chip.memory[--Chip.stackPointer] = nextAddressLowByteValue;
-                        Chip.programCounter = address;
-                    }
+                        Instructions.CALL_Instr(Chip.programCounter, address);
 
                     return "Success";
                 }
                 else if (opCode == "001" && opBinaryString.EndsWith("0")) // CZ
                 {
                     if (Chip.conditionalBits["ZeroBit"])
-                    {
-                        Chip.memory[--Chip.stackPointer] = nextAddressHighByteValue;
-                        Chip.memory[--Chip.stackPointer] = nextAddressLowByteValue;
-                        Chip.programCounter = address;
-                    }
+                        Instructions.CALL_Instr(Chip.programCounter, address);
 
                     return "Success";
                 }
                 else if (opCode == "000") // CNZ
                 {
                     if (!Chip.conditionalBits["ZeroBit"])
-                    {
-                        Chip.memory[--Chip.stackPointer] = nextAddressHighByteValue;
-                        Chip.memory[--Chip.stackPointer] = nextAddressLowByteValue;
-                        Chip.programCounter = address;
-                    }
+                        Instructions.CALL_Instr(Chip.programCounter, address);
 
                     return "Success";
                 }
                 else if (opCode == "111") // CM
                 {
                     if (Chip.conditionalBits["SignBit"])
-                    {
-                        Chip.memory[--Chip.stackPointer] = nextAddressHighByteValue;
-                        Chip.memory[--Chip.stackPointer] = nextAddressLowByteValue;
-                        Chip.programCounter = address;
-                    }
+                        Instructions.CALL_Instr(Chip.programCounter, address);
 
                     return "Success";
                 }
                 else if (opCode == "110") // CP
                 {
                     if (!Chip.conditionalBits["SignBit"])
-                    {
-                        Chip.memory[--Chip.stackPointer] = nextAddressHighByteValue;
-                        Chip.memory[--Chip.stackPointer] = nextAddressLowByteValue;
-                        Chip.programCounter = address;
-                    }
+                        Instructions.CALL_Instr(Chip.programCounter, address);
 
                     return "Success";
                 }
                 else if (opCode == "101") // CPE
                 {
                     if (Chip.conditionalBits["ParityBit"])
-                    {
-                        Chip.memory[--Chip.stackPointer] = nextAddressHighByteValue;
-                        Chip.memory[--Chip.stackPointer] = nextAddressLowByteValue;
-                        Chip.programCounter = address;
-                    }
+                        Instructions.CALL_Instr(Chip.programCounter, address);
 
                     return "Success";
                 }
                 else if (opCode == "100") // CPO
                 {
                     if (!Chip.conditionalBits["ParityBit"])
-                    {
-                        Chip.memory[--Chip.stackPointer] = nextAddressHighByteValue;
-                        Chip.memory[--Chip.stackPointer] = nextAddressLowByteValue;
-                        Chip.programCounter = address;
-                    }
+                        Instructions.CALL_Instr(Chip.programCounter, address);
 
                     return "Success";
                 }
@@ -1101,104 +922,68 @@ namespace _8080
                     (opBinaryString.EndsWith("000") || opBinaryString.EndsWith("001")))
             {
                 string opCode = opBinaryString.Substring(2, 3);
-                int nextAddressHighByteValue = -1;
-                int nextAddressLowByteValue = -1;
 
-                if (Chip.stackPointer == 65535)
-                    return "ERROR: Stack is empty";
+                if (Chip.stackPointer > 65533)
+                    return "ERROR: StackPointer value is too high";
 
                 if (opCode == "001" && opBinaryString.EndsWith("1")) // RET
                 {
-                    nextAddressLowByteValue = Chip.memory[Chip.stackPointer++];
-                    nextAddressHighByteValue = Chip.memory[Chip.stackPointer];
-                    Chip.programCounter = Instructions.Concat8BitIntValues(nextAddressHighByteValue, nextAddressLowByteValue);
+                    Instructions.RET_Instr();
                     return "Success";
                 }
                 else if (opCode == "011") // RC
                 {
                     if (Chip.conditionalBits["CarryBit"])
-                    {
-                        nextAddressLowByteValue = Chip.memory[Chip.stackPointer++];
-                        nextAddressHighByteValue = Chip.memory[Chip.stackPointer];
-                        Chip.programCounter = Instructions.Concat8BitIntValues(nextAddressHighByteValue, nextAddressLowByteValue);
-                    }
+                        Instructions.RET_Instr();
 
                     return "Success";
                 }
                 else if (opCode == "010") // RNC
                 {
                     if (!Chip.conditionalBits["CarryBit"])
-                    {
-                        nextAddressLowByteValue = Chip.memory[Chip.stackPointer++];
-                        nextAddressHighByteValue = Chip.memory[Chip.stackPointer];
-                        Chip.programCounter = Instructions.Concat8BitIntValues(nextAddressHighByteValue, nextAddressLowByteValue);
-                    }
+                        Instructions.RET_Instr();
 
                     return "Success";
                 }
                 else if (opCode == "001" && opBinaryString.EndsWith("0")) // RZ
                 {
                     if (Chip.conditionalBits["ZeroBit"])
-                    {
-                        nextAddressLowByteValue = Chip.memory[Chip.stackPointer++];
-                        nextAddressHighByteValue = Chip.memory[Chip.stackPointer];
-                        Chip.programCounter = Instructions.Concat8BitIntValues(nextAddressHighByteValue, nextAddressLowByteValue);
-                    }
+                        Instructions.RET_Instr();
 
                     return "Success";
                 }
                 else if (opCode == "000") // RNZ
                 {
                     if (!Chip.conditionalBits["ZeroBit"])
-                    {
-                        nextAddressLowByteValue = Chip.memory[Chip.stackPointer++];
-                        nextAddressHighByteValue = Chip.memory[Chip.stackPointer];
-                        Chip.programCounter = Instructions.Concat8BitIntValues(nextAddressHighByteValue, nextAddressLowByteValue);
-                    }
+                        Instructions.RET_Instr();
 
                     return "Success";
                 }
                 else if (opCode == "111") // RM
                 {
                     if (Chip.conditionalBits["SignBit"])
-                    {
-                        nextAddressLowByteValue = Chip.memory[Chip.stackPointer++];
-                        nextAddressHighByteValue = Chip.memory[Chip.stackPointer];
-                        Chip.programCounter = Instructions.Concat8BitIntValues(nextAddressHighByteValue, nextAddressLowByteValue);
-                    }
+                        Instructions.RET_Instr();
 
                     return "Success";
                 }
                 else if (opCode == "110") // RP
                 {
                     if (!Chip.conditionalBits["SignBit"])
-                    {
-                        nextAddressLowByteValue = Chip.memory[Chip.stackPointer++];
-                        nextAddressHighByteValue = Chip.memory[Chip.stackPointer];
-                        Chip.programCounter = Instructions.Concat8BitIntValues(nextAddressHighByteValue, nextAddressLowByteValue);
-                    }
+                        Instructions.RET_Instr();
 
                     return "Success";
                 }
                 else if (opCode == "101") // RPE
                 {
                     if (Chip.conditionalBits["ParityBit"])
-                    {
-                        nextAddressLowByteValue = Chip.memory[Chip.stackPointer++];
-                        nextAddressHighByteValue = Chip.memory[Chip.stackPointer];
-                        Chip.programCounter = Instructions.Concat8BitIntValues(nextAddressHighByteValue, nextAddressLowByteValue);
-                    }
+                        Instructions.RET_Instr();
 
                     return "Success";
                 }
                 else if (opCode == "100") // RPO
                 {
                     if (!Chip.conditionalBits["ParityBit"])
-                    {
-                        nextAddressLowByteValue = Chip.memory[Chip.stackPointer++];
-                        nextAddressHighByteValue = Chip.memory[Chip.stackPointer];
-                        Chip.programCounter = Instructions.Concat8BitIntValues(nextAddressHighByteValue, nextAddressLowByteValue);
-                    }
+                        Instructions.RET_Instr();
 
                     return "Success";
                 }

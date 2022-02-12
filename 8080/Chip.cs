@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -17,6 +18,30 @@ namespace _8080
             { "H", 0 },
             { "L", 0 }
         };
+
+        public static void SetRegister(string key, int value)
+        {
+            if (!registers.ContainsKey(key))
+                throw new Exception("Register does not exist");
+
+            if (value < 0)
+            {
+                value *= -1;
+                BitArray valueArray = Instructions.ConvertIntTo8BitArray(value);
+                BitArray valueArrayTwosComplement = Instructions.ConvertBitArrayToOnesComplement(valueArray, true);
+                int valueTwosComplement = Instructions.ConvertBitArrayToInt(valueArrayTwosComplement);
+            }
+
+            registers[key] = value;
+        }
+
+        public static int GetRegister(string key)
+        {
+            if (!registers.ContainsKey(key))
+                throw new Exception("Register does not exist");
+
+            return registers[key];
+        }
 
         public static Dictionary<string, bool> conditionalBits = new Dictionary<string, bool>
         {

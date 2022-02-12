@@ -365,6 +365,21 @@ namespace _8080
 
         public static string ADI_Instr(int value)
         {
+            if (!IsValueInOneByteRange(value))
+                value = NormalizeOneByteValue(value);
+
+            int ogRegA = Chip.registers["A"];
+            Chip.registers["A"] += value;
+
+            if (!IsValueInOneByteRange(Chip.registers["A"]))
+                Chip.registers["A"] = NormalizeOneByteValue(Chip.registers["A"]);
+
+            SetConditionalBits("ADD", ogRegA, value, Chip.registers["A"]);
+            return "Success";
+        }
+
+        /*public static string ADI_Instr(int value)
+        {
             if (!IsValueInOneByteRangeTwosComplement(value))
                 value = NormalizeOneByteValueTwosComplement(value);
 
@@ -376,7 +391,7 @@ namespace _8080
 
             SetConditionalBits("ADD", ogRegA, value, Chip.registers["A"]);
             return "Success";
-        }
+        }*/
 
         public static string INR_Instr(string reg)
         {
@@ -511,6 +526,21 @@ namespace _8080
 
         public static string SUI_Instr(int value)
         {
+            if (!IsValueInOneByteRange(value))
+                value = NormalizeOneByteValue(value);
+
+            int ogRegA = Chip.registers["A"];
+            Chip.registers["A"] -= value;
+
+            if (!IsValueInOneByteRange(Chip.registers["A"]))
+                Chip.registers["A"] = NormalizeOneByteValue(Chip.registers["A"]);
+
+            SetConditionalBits("SUB", ogRegA, value, Chip.registers["A"]);
+            return "Success";
+        }
+
+        /*public static string SUI_Instr(int value)
+        {
             if (!IsValueInOneByteRangeTwosComplement(value))
                 value = NormalizeOneByteValueTwosComplement(value);
 
@@ -522,7 +552,7 @@ namespace _8080
 
             SetConditionalBits("SUB", ogRegA, value, Chip.registers["A"]);
             return "Success";
-        }
+        }*/
 
         public static string ANA_Instr(string reg)
         {
@@ -883,6 +913,26 @@ namespace _8080
                 Chip.registers[regNext] = highLowBytes[1];
             }
 
+            return "Success";
+        }
+
+        public static string CALL_Instr(int nextAddress, int jumpAddress)
+        {
+            int[] nextAddressHighLowByteValues = Instructions.Extract8BitHighAndLowValues(nextAddress);
+            int nextAddressHighByteValue = nextAddressHighLowByteValues[0];
+            int nextAddressLowByteValue = nextAddressHighLowByteValues[1];
+
+            Chip.memory[--Chip.stackPointer] = nextAddressHighByteValue;
+            Chip.memory[--Chip.stackPointer] = nextAddressLowByteValue;
+            Chip.programCounter = jumpAddress;
+            return "Succes";
+        }
+
+        public static string RET_Instr()
+        {
+            int nextAddressLowByteValue = Chip.memory[Chip.stackPointer++];
+            int nextAddressHighByteValue = Chip.memory[Chip.stackPointer++];
+            Chip.programCounter = Instructions.Concat8BitIntValues(nextAddressHighByteValue, nextAddressLowByteValue);
             return "Success";
         }
 

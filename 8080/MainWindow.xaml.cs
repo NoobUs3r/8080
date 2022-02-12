@@ -33,7 +33,6 @@ namespace _8080
         DataTable dt;
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
-
         {
             dt = new DataTable("memoryTable");
 
@@ -102,7 +101,7 @@ namespace _8080
             UpdateMemoryWindow();
         }
 
-        private void ClearButton_Click(object sender, RoutedEventArgs e)
+        public void ClearButton_Click(object sender, RoutedEventArgs e)
         {
             ClearRegValues();
             UpdateRegWindows();
@@ -113,6 +112,77 @@ namespace _8080
             ClearStackPointerValue();
             UpdateStackPointerWindow();
             ClearMemoryValues();
+            UpdateMemoryWindow();
+            ClearCurrentStepRowValue();
+        }
+
+        int currentStepRow = 0;
+
+        public void NextStepButton_Click(object sender, RoutedEventArgs e)
+        {
+            int totalNumberOfRows = CodeBox.Text.Split("\n").Length;
+
+            if (currentStepRow == totalNumberOfRows || totalNumberOfRows == 0)
+                return;
+
+            ExecuteCodeUntilStepRow(sender, e, ++currentStepRow);
+        }
+
+        public void PreviousStepButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (currentStepRow == 0)
+                return;
+
+            ExecuteCodeUntilStepRow(sender, e, --currentStepRow);
+        }
+
+        private void ExecuteCodeUntilStepRow(object sender, RoutedEventArgs e, int ogCurrentStepRow)
+        {
+            string[] rows = CodeBox.Text.Split("\n");
+            string codeToExecute = string.Empty;
+
+            for (int i = 0; i < currentStepRow; i++)
+            {
+                codeToExecute += rows[i];
+                codeToExecute += "\n";
+            }
+
+            ClearButton_Click(sender, e);
+            currentStepRow = ogCurrentStepRow;
+
+            string parserMessage = CodeParser.CheckCodeForErrorsAndWriteToMemory(codeToExecute);
+            Chip.programCounter = 0;
+
+            if (parserMessage != "Success")
+            {
+                MessageBox.Show(parserMessage);
+                return;
+            }
+
+            for (int i = 0; i < currentStepRow; i++)
+            {
+                if (rows[i].StartsWith(";"))
+                    continue;
+
+                string executerMessage = CodeParser.ExecuteFromMemoryOnCounter();
+
+                if (executerMessage != "Success")
+                {
+                    MessageBox.Show(executerMessage);
+                    return;
+                }
+
+                if (Chip.memory[Chip.programCounter] == 118) // HLT
+                {
+                    Chip.programCounter++;
+                    break;
+                }
+            }
+
+            UpdateRegWindows();
+            UpdateConBitWindows();
+            UpdateProgramCounterWindow();
+            UpdateStackPointerWindow();
             UpdateMemoryWindow();
         }
 
@@ -255,6 +325,7 @@ namespace _8080
 
         int memoryWindowAddressStart = 0;
         int memoryWindowRowHeaderStart = 0;
+
         private void UpdateMemoryRowsButton_Click(object sender, RoutedEventArgs e)
         {
             int hexFF0 = 4080;
@@ -293,6 +364,11 @@ namespace _8080
             memoryWindowAddressStart = Int32.Parse(fullAddress, System.Globalization.NumberStyles.HexNumber);
             memoryWindowRowHeaderStart = rowAddress_Int;
             UpdateMemoryWindow();
+        }
+
+        private void ClearCurrentStepRowValue()
+        {
+            currentStepRow = 0;
         }
     }
 }
