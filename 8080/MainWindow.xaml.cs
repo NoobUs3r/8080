@@ -1,18 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace _8080
 {
@@ -38,7 +26,6 @@ namespace _8080
 
             string[] columnHeaders = new string[] {"\\", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
                                                    "A", "B", "C", "D", "E", "F"};
-
             int cols = columnHeaders.Length;
             int rows = 16;
 
@@ -69,7 +56,7 @@ namespace _8080
         {
             ClearButton_Click(sender, e);
             string parserMessage = CodeParser.CheckCodeForErrorsAndWriteToMemory(CodeBox.Text);
-            Chip.programCounter = 0;
+            Chip.ProgramCounter = 0;
 
             if (parserMessage != "Success")
             {
@@ -77,20 +64,26 @@ namespace _8080
                 return;
             }
 
-            while (Chip.programCounter < 65535 )
+            while (Chip.ProgramCounter < 65535)
             {
+                if (Chip.IsAddressDefineByte(Chip.ProgramCounter))
+                {
+                    Chip.ProgramCounter++;
+                    continue;
+                }
+
+                if (Chip.GetMemory(Chip.ProgramCounter) == 118) // HLT
+                {
+                    Chip.ProgramCounter++;
+                    break;
+                }
+
                 string executerMessage = CodeParser.ExecuteFromMemoryOnCounter();
 
                 if (executerMessage != "Success")
                 {
                     MessageBox.Show(executerMessage);
                     return;
-                }
-
-                if (Chip.memory[Chip.programCounter] == 118) // HLT
-                {
-                    Chip.programCounter++;
-                    break;
                 }
             }
 
@@ -114,30 +107,83 @@ namespace _8080
             ClearMemoryValues();
             UpdateMemoryWindow();
             ClearCurrentStepRowValue();
+            RemoveStepArrow();
+            ClearTotalInstructionsLoaded();
         }
 
-        int currentStepRow = 0;
+        int currentStepRow = -1;
 
         public void NextStepButton_Click(object sender, RoutedEventArgs e)
         {
             int totalNumberOfRows = CodeBox.Text.Split("\n").Length;
 
-            if (currentStepRow == totalNumberOfRows || totalNumberOfRows == 0)
+            if (currentStepRow == totalNumberOfRows - 1 || totalNumberOfRows == 0)
                 return;
 
-            ExecuteCodeUntilStepRow(sender, e, ++currentStepRow);
+            int ogCurrentStepRow = ++currentStepRow;
+            ClearButton_Click(sender, e);
+            currentStepRow = ogCurrentStepRow;
+
+            string parserMessage = CodeParser.CheckCodeForErrorsAndWriteToMemory(CodeBox.Text, currentStepRow);
+            Chip.ProgramCounter = 0;
+
+            if (parserMessage != "Success")
+            {
+                MessageBox.Show(parserMessage);
+                return;
+            }
+
+            ExecuteCodeUntilStepRow(sender, e);
+            AddArrowToCurrentStepRow();
         }
 
         public void PreviousStepButton_Click(object sender, RoutedEventArgs e)
         {
-            if (currentStepRow == 0)
+            if (currentStepRow <= 0)
+            {
+                ClearButton_Click(sender, e);
                 return;
+            }
 
-            ExecuteCodeUntilStepRow(sender, e, --currentStepRow);
+            int ogCurrentStepRow = --currentStepRow;
+            ClearButton_Click(sender, e);
+            currentStepRow = ogCurrentStepRow;
+
+            string parserMessage = CodeParser.CheckCodeForErrorsAndWriteToMemory(CodeBox.Text, currentStepRow);
+            Chip.ProgramCounter = 0;
+
+            if (parserMessage != "Success")
+            {
+                MessageBox.Show(parserMessage);
+                return;
+            }
+
+            ExecuteCodeUntilStepRow(sender, e);
+            AddArrowToCurrentStepRow();
         }
 
-        private void ExecuteCodeUntilStepRow(object sender, RoutedEventArgs e, int ogCurrentStepRow)
+        private void AddArrowToCurrentStepRow()
         {
+            string[] rows = CodeBox.Text.Split("\n");
+            string textWithArrowOnRow = string.Empty;
+
+            for (int i = 0; i < rows.Length; i++)
+            {
+                string rowText = rows[i];
+
+                if (i == currentStepRow)
+                    rowText = "-> " + rowText;
+
+                textWithArrowOnRow += rowText + "\n";
+            }
+            
+            textWithArrowOnRow = textWithArrowOnRow[..^1];
+            CodeBox.Text = textWithArrowOnRow;
+        }
+
+        private void ExecuteCodeUntilStepRow(object sender, RoutedEventArgs e)
+        {
+            /*RemoveStepArrow();
             string[] rows = CodeBox.Text.Split("\n");
             string codeToExecute = string.Empty;
 
@@ -151,18 +197,30 @@ namespace _8080
             currentStepRow = ogCurrentStepRow;
 
             string parserMessage = CodeParser.CheckCodeForErrorsAndWriteToMemory(codeToExecute);
-            Chip.programCounter = 0;
+            Chip.ProgramCounter = 0;
 
             if (parserMessage != "Success")
             {
                 MessageBox.Show(parserMessage);
                 return;
-            }
+            }*/
 
-            for (int i = 0; i < currentStepRow; i++)
+            //for (int i = 0; i < ogProgramCounter; i++)
+            //for (int i = 0; i < CodeParser.TotalInstructionsLoaded; i++)
+            //for (int i = 0; i < CodeParser.programCounterForCurrentStepRow; i++)
+            while (Chip.ProgramCounter < CodeParser.programCounterForCurrentStepRow)
             {
-                if (rows[i].StartsWith(";"))
+                if (Chip.IsAddressDefineByte(Chip.ProgramCounter))
+                {
+                    Chip.ProgramCounter++;
                     continue;
+                }
+
+                if (Chip.GetMemory(Chip.ProgramCounter) == 118) // HLT
+                {
+                    Chip.ProgramCounter++;
+                    break;
+                }
 
                 string executerMessage = CodeParser.ExecuteFromMemoryOnCounter();
 
@@ -170,12 +228,6 @@ namespace _8080
                 {
                     MessageBox.Show(executerMessage);
                     return;
-                }
-
-                if (Chip.memory[Chip.programCounter] == 118) // HLT
-                {
-                    Chip.programCounter++;
-                    break;
                 }
             }
 
@@ -188,43 +240,27 @@ namespace _8080
 
         private void UpdateRegWindows()
         {
-            for (int i = 0; i < Chip.registers.Count; i++)
-            {
-                string reg = Chip.registers.ElementAt(i).Key;
-                string hexValue = Chip.registers[reg].ToString("X");
-
-                if (hexValue.Length > 2)
-                    hexValue = hexValue.Substring(hexValue.Length - 2);
-
-                if (reg == "A")
-                    regA_Value.Text = hexValue;
-                else if (reg == "B")
-                    regB_Value.Text = hexValue;
-                else if (reg == "C")
-                    regC_Value.Text = hexValue;
-                else if (reg == "D")
-                    regD_Value.Text = hexValue;
-                else if (reg == "E")
-                    regE_Value.Text = hexValue;
-                else if (reg == "H")
-                    regH_Value.Text = hexValue;
-                else if (reg == "L")
-                    regL_Value.Text = hexValue;
-            }
+            regA_Value.Text = Chip.GetRegister("A").ToString("X");
+            regB_Value.Text = Chip.GetRegister("B").ToString("X");
+            regC_Value.Text = Chip.GetRegister("C").ToString("X");
+            regD_Value.Text = Chip.GetRegister("D").ToString("X");
+            regE_Value.Text = Chip.GetRegister("E").ToString("X");
+            regH_Value.Text = Chip.GetRegister("H").ToString("X");
+            regL_Value.Text = Chip.GetRegister("L").ToString("X");
         }
 
         private void UpdateConBitWindows()
         {
-            conBitCarry_Value.Text = Chip.conditionalBits["CarryBit"].ToString();
-            conBitAuxCarry_Value.Text = Chip.conditionalBits["AuxiliaryCarryBit"].ToString();
-            conBitSign_Value.Text = Chip.conditionalBits["SignBit"].ToString();
-            conBitZero_Value.Text = Chip.conditionalBits["ZeroBit"].ToString();
-            conBitParity_Value.Text = Chip.conditionalBits["ParityBit"].ToString();
+            conBitCarry_Value.Text = Chip.GetConditionalBit("CarryBit").ToString();
+            conBitAuxCarry_Value.Text = Chip.GetConditionalBit("AuxiliaryCarryBit").ToString();
+            conBitSign_Value.Text = Chip.GetConditionalBit("SignBit").ToString();
+            conBitZero_Value.Text = Chip.GetConditionalBit("ZeroBit").ToString();
+            conBitParity_Value.Text = Chip.GetConditionalBit("ParityBit").ToString();
         }
 
         private void UpdateProgramCounterWindow()
         {
-            string hexValue = Chip.programCounter.ToString("X");
+            string hexValue = Chip.ProgramCounter.ToString("X");
 
             if (hexValue.Length > 4)
                 hexValue = hexValue.Substring(hexValue.Length - 4);
@@ -234,7 +270,7 @@ namespace _8080
 
         private void UpdateStackPointerWindow()
         {
-            string hexValue = Chip.stackPointer.ToString("X");
+            string hexValue = Chip.StackPointer.ToString("X");
 
             if (hexValue.Length > 4)
                 hexValue = hexValue.Substring(hexValue.Length - 4);
@@ -273,7 +309,7 @@ namespace _8080
                     }
                     else
                     {
-                        string hexValue = Chip.memory[address].ToString("X");
+                        string hexValue = Chip.GetMemory(address).ToString("X");
 
                         if (hexValue.Length > 2)
                             hexValue = hexValue.Substring(hexValue.Length - 2);
@@ -287,39 +323,39 @@ namespace _8080
 
         private void ClearRegValues()
         {
-            Chip.registers["A"] = 0;
-            Chip.registers["B"] = 0;
-            Chip.registers["C"] = 0;
-            Chip.registers["D"] = 0;
-            Chip.registers["E"] = 0;
-            Chip.registers["H"] = 0;
-            Chip.registers["L"] = 0;
+            Chip.SetRegister("A", 0);
+            Chip.SetRegister("B", 0);
+            Chip.SetRegister("C", 0);
+            Chip.SetRegister("D", 0);
+            Chip.SetRegister("E", 0);
+            Chip.SetRegister("H", 0);
+            Chip.SetRegister("L", 0);
         }
 
         private void ClearConBitValues()
         {
-            Chip.conditionalBits["CarryBit"] = false;
-            Chip.conditionalBits["AuxiliaryCarryBit"] = false;
-            Chip.conditionalBits["SignBit"] = false;
-            Chip.conditionalBits["ZeroBit"] = false;
-            Chip.conditionalBits["ParityBit"] = false;
+            Chip.SetConditionalBit("CarryBit", false);
+            Chip.SetConditionalBit("AuxiliaryCarryBit", false);
+            Chip.SetConditionalBit("SignBit", false);
+            Chip.SetConditionalBit("ZeroBit", false);
+            Chip.SetConditionalBit("ParityBit", false);
         }
 
         private void ClearProgramCounterValue()
         {
-            Chip.programCounter = 0;
+            Chip.ProgramCounter = 0;
         }
 
         private void ClearStackPointerValue()
         {
-            Chip.stackPointer = 65535;
+            Chip.StackPointer = 65535;
         }
 
         private void ClearMemoryValues()
         {
-            for (int i = 0; i < Chip.memory.Length; i++)
+            for (int i = 0; i < 65535; i++)
             {
-                Chip.memory[i] = 0;
+                Chip.SetMemory(i, 0);
             }
         }
 
@@ -368,7 +404,17 @@ namespace _8080
 
         private void ClearCurrentStepRowValue()
         {
-            currentStepRow = 0;
+            currentStepRow = -1;
+        }
+
+        private void ClearTotalInstructionsLoaded()
+        {
+            CodeParser.TotalInstructionsLoaded = 0;
+        }
+
+        private void RemoveStepArrow()
+        {
+            CodeBox.Text = CodeBox.Text.Replace("-> ", "");
         }
     }
 }
