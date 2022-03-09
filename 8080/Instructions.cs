@@ -193,6 +193,11 @@ namespace _8080
             return labelMemoryAddress[label];
         }
 
+        public static void ClearLabelMemoryAddress()
+        {
+            labelMemoryAddress.Clear();
+        }
+
         public static string MOV_Instr(string operand1, string operand2)
         {
             int mAddress = GetM();

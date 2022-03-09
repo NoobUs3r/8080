@@ -7,7 +7,6 @@ namespace _8080
     {
         public static string instruction = string.Empty;
         public static string operands = string.Empty;
-        public static int programCounterForCurrentStepRow = 0;
 
         /*public static string GetAllLabels(string code)
         {
@@ -41,61 +40,67 @@ namespace _8080
             return "Success";
         }*/
 
-        public static string CheckCodeForErrorsAndWriteToMemory(string code, int currentStepRow = -1)
+        public static string CheckCodeForErrorsAndWriteToMemory(string code)
         {
             string codeUppercase = code.ToUpper();
             string[] lines = codeUppercase.Split(new string[] { "\r\n", "\r", "\n" },
                                                  StringSplitOptions.None);
 
-            for (int i = 0; i < lines.Length; i++)
+            for (int m = 0; m < 2; m++)
             {
-                string line = lines[i];
-                line = RemoveCommentFromLine(line);
-                line = line.Trim();
-                string lineRemainingPart = line;
-                string[] words = line.Split(" ");
+                Chip.ProgramCounter = 0;
+                bool storingLabels = m == 0;
 
-                if (line == string.Empty)
-                    continue;
-
-                for (int j = 0; j < words.Length; j++)
+                for (int i = 0; i < lines.Length; i++)
                 {
-                    string word = words[j];
-                    lineRemainingPart = RemoveFirstOccurenceFromString(word, lineRemainingPart);
-                    //lineRemainingPart = RemoveSpacesFromBeginning(lineRemainingPart);
-                    lineRemainingPart = lineRemainingPart.Trim();
+                    string line = lines[i];
+                    line = RemoveCommentFromLine(line);
+                    line = line.Trim();
+                    string lineRemainingPart = line;
+                    string[] words = line.Split(" ");
 
-                    // Check if LABEL
-                    if (word.Contains(":") && j == 0)
-                    {
-                        if (!IsLabelValid(word))
-                            return "ERROR: Invalid label";
-
-                        //word = word.Replace(":", "");
-                        //string settingMessage = Instructions.SetLabelMemoryAddress(word, Chip.ProgramCounter);
-
-                        //if (settingMessage != "Success")
-                        //    return settingMessage;
-
+                    if (line == string.Empty)
                         continue;
+
+                    for (int j = 0; j < words.Length; j++)
+                    {
+                        string word = words[j];
+                        lineRemainingPart = RemoveFirstOccurenceFromString(word, lineRemainingPart);
+                        //lineRemainingPart = RemoveSpacesFromBeginning(lineRemainingPart);
+                        lineRemainingPart = lineRemainingPart.Trim();
+
+                        // Check if LABEL
+                        if (word.Contains(":") && j == 0)
+                        {
+                            if (!IsLabelValid(word))
+                                return "ERROR: Invalid label";
+
+                            if (storingLabels)
+                            {
+                                word = word.Replace(":", "");
+                                string settingMessage = Instructions.SetLabelMemoryAddress(word, Chip.ProgramCounter);
+
+                                if (settingMessage != "Success")
+                                    return settingMessage;
+                            }
+
+                            continue;
+                        }
+                        // Check if instruction
+                        else if (!Instructions.DoesInstructionExist(word))
+                            return "ERROR: Invalid instruction";
+
+                        // Execute
+                        instruction = word;
+                        operands = lineRemainingPart;
+                        string instructionLoadMessage = LoadInstructionToMemory(instruction, operands, storingLabels);
+
+                        if (instructionLoadMessage != "Success")
+                            return instructionLoadMessage;
+
+                        break;
                     }
-                    // Check if instruction
-                    else if (!Instructions.DoesInstructionExist(word))
-                        return "ERROR: Invalid instruction";
-
-                    // Execute
-                    instruction = word;
-                    operands = lineRemainingPart;
-                    string instructionLoadMessage = LoadInstructionToMemory(instruction, operands);
-
-                    if (instructionLoadMessage != "Success")
-                        return instructionLoadMessage;
-
-                    break;
                 }
-
-                if (i == currentStepRow)
-                    programCounterForCurrentStepRow = Chip.ProgramCounter;
             }
 
             return "Success";
@@ -165,7 +170,7 @@ namespace _8080
             return line;
         }*/
 
-        private static int totalInstructionsLoaded = 0;
+        /*private static int totalInstructionsLoaded = 0;
 
         public static int TotalInstructionsLoaded
         {
@@ -177,12 +182,12 @@ namespace _8080
             {
                 totalInstructionsLoaded = value;
             }
-        }
+        }*/
 
-        private static string LoadInstructionToMemory(string instr, string text)
+        private static string LoadInstructionToMemory(string instr, string text, bool storingLabels)
         {
             string errorMessage = string.Empty;
-            totalInstructionsLoaded++;
+            //totalInstructionsLoaded++;
 
             if (Instructions.IsOpLabNoOperand(instr))
             {
@@ -432,13 +437,27 @@ namespace _8080
             }
             else if (Instructions.IsOpLabJump(instr))
             {
+                int text_Int = -1;
+
+                if (storingLabels)
+                    text = "0H";
+
                 if (!Instructions.IsValueOperandFormatValid(text))
-                    return $"ERROR: Invalid {instr} operand format";
+                {
+                    int labelMemoryAddress = Instructions.GetLabelMemoryAddress(text);
 
-                int text_Int = Instructions.ConvertValueOperandToDecimal(text, ref errorMessage);
+                    if (labelMemoryAddress == -1)
+                        return $"ERROR: Invalid {instr} operand format";
 
-                if (errorMessage != string.Empty)
-                    return errorMessage;
+                    text_Int = labelMemoryAddress;
+                }
+                else
+                {
+                    text_Int = Instructions.ConvertValueOperandToDecimal(text, ref errorMessage);
+
+                    if (errorMessage != string.Empty)
+                        return errorMessage;
+                }
 
                 int[] highAndLowValues = Instructions.Extract8BitHighAndLowValues(text_Int);
                 int highByteValue = highAndLowValues[0];
@@ -912,6 +931,7 @@ namespace _8080
                 int lowByteValue = Chip.GetMemory(++Chip.ProgramCounter);
                 int highByteValue = Chip.GetMemory(++Chip.ProgramCounter);
                 int address = Instructions.Concat8BitIntValues(highByteValue, lowByteValue);
+                //programCounterForCurrentStepRow = address;
 
                 if (!Instructions.IsValueInTwoBytesRange(address))
                     return $"ERROR: Invalid address";
