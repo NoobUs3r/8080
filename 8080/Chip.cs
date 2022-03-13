@@ -134,8 +134,7 @@ namespace _8080
             set
             {
                 if (value < 0 || value > 65535)
-                    return;
-                    //throw new Exception("Value is invalid");
+                    throw new Exception("Value is invalid");
 
                 programCounter = value;
             }

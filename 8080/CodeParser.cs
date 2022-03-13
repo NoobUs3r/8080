@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 
 namespace _8080
 {
@@ -36,7 +35,7 @@ namespace _8080
                         lineRemainingPart = RemoveFirstOccurenceFromString(word, lineRemainingPart);
                         lineRemainingPart = lineRemainingPart.Trim();
 
-                        // Check if LABEL
+                        // Check if LABEL and store address
                         if (word.Contains(":") && j == 0)
                         {
                             if (!IsLabelValid(word))
@@ -57,7 +56,7 @@ namespace _8080
                         else if (!Instructions.DoesInstructionExist(word))
                             return "ERROR: Invalid instruction";
 
-                        // Execute
+                        // Load to memory
                         instruction = word;
                         operands = lineRemainingPart;
                         string instructionLoadMessage = InstrLoader.LoadInstructionToMemory(instruction, operands, storingLabels);

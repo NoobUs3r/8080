@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Text;
-
-namespace _8080
+﻿namespace _8080
 {
     public static class InstrExecuter
     {
