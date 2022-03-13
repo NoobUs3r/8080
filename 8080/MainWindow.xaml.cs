@@ -78,7 +78,7 @@ namespace _8080
                     break;
                 }
 
-                string executerMessage = CodeParser.ExecuteFromMemoryOnCounter();
+                string executerMessage = InstrExecuter.ExecuteFromMemoryOnCounter();
 
                 if (executerMessage != "Success")
                 {
@@ -100,16 +100,13 @@ namespace _8080
             UpdateRegWindows();
             ClearConBitValues();
             UpdateConBitWindows();
-            ClearProgramCounterValue();
+            Chip.ProgramCounter = 0;
             UpdateProgramCounterWindow();
-            ClearStackPointerValue();
+            Chip.StackPointer = 65535;
             UpdateStackPointerWindow();
             ClearMemoryValues();
             UpdateMemoryWindow();
-            ClearCurrentStepRowValue();
-            RemoveStepArrow();
             Instructions.ClearLabelMemoryAddress();
-            //ClearTotalInstructionsLoaded();
             instructionsToBeExecuted = 0;
             areInstructionsWrittenToMemory = false;
         }
@@ -119,16 +116,8 @@ namespace _8080
 
         public void NextStepButton_Click(object sender, RoutedEventArgs e)
         {
-            //int totalNumberOfRows = CodeBox.Text.Split("\n").Length;
-
             if (instructionsToBeExecuted == 65535)
                 return;
-            //if (instructionsToBeExecuted == totalNumberOfRows - 1 || totalNumberOfRows == 0)
-            //    return;
-
-            //int ogCurrentStepRow = ++instructionsToBeExecuted;
-            //ClearButton_Click(sender, e);
-            //instructionsToBeExecuted = ogCurrentStepRow;
 
             instructionsToBeExecuted++;
 
@@ -146,20 +135,18 @@ namespace _8080
             }
 
             ExecuteCodeUntilStepRow(sender, e);
-            //AddArrowToCurrentStepRow();
         }
 
         public void PreviousStepButton_Click(object sender, RoutedEventArgs e)
         {
-            if (instructionsToBeExecuted <= 0)
-            {
-                ClearButton_Click(sender, e);
-                return;
-            }
-
             int ogInstructionsToBeExecuted = --instructionsToBeExecuted;
             ClearButton_Click(sender, e);
+            instructionsToBeExecuted = ogInstructionsToBeExecuted;
 
+            if (instructionsToBeExecuted <= 0)
+                return;
+
+            areInstructionsWrittenToMemory = true;
             string parserMessage = CodeParser.CheckCodeForErrorsAndWriteToMemory(CodeBox.Text);
             Chip.ProgramCounter = 0;
 
@@ -169,96 +156,33 @@ namespace _8080
                 return;
             }
 
-            instructionsToBeExecuted = ogInstructionsToBeExecuted;
-            areInstructionsWrittenToMemory = true;
-
-            //string parserMessage = CodeParser.CheckCodeForErrorsAndWriteToMemory(CodeBox.Text, instructionsToBeExecuted);
-            //Chip.ProgramCounter = 0;
-            
-            //if (parserMessage != "Success")
-            //{
-            //    MessageBox.Show(parserMessage);
-            //    return;
-            //}
-
             for (int i = 0; i < instructionsToBeExecuted; i++)
             {
                 ExecuteCodeUntilStepRow(sender, e);
             }
-            
-            //AddArrowToCurrentStepRow();
-        }
-
-        private void AddArrowToCurrentStepRow()
-        {
-            string[] rows = CodeBox.Text.Split("\n");
-            string textWithArrowOnRow = string.Empty;
-
-            for (int i = 0; i < rows.Length; i++)
-            {
-                string rowText = rows[i];
-
-                if (i == instructionsToBeExecuted)
-                    rowText = "-> " + rowText;
-
-                textWithArrowOnRow += rowText + "\n";
-            }
-            
-            textWithArrowOnRow = textWithArrowOnRow[..^1];
-            CodeBox.Text = textWithArrowOnRow;
         }
 
         private void ExecuteCodeUntilStepRow(object sender, RoutedEventArgs e)
         {
-            /*RemoveStepArrow();
-            string[] rows = CodeBox.Text.Split("\n");
-            string codeToExecute = string.Empty;
-
-            for (int i = 0; i < currentStepRow; i++)
+            if (Chip.IsAddressDefineByte(Chip.ProgramCounter))
             {
-                codeToExecute += rows[i];
-                codeToExecute += "\n";
+                Chip.ProgramCounter++;
+                return;
             }
 
-            ClearButton_Click(sender, e);
-            currentStepRow = ogCurrentStepRow;
-
-            string parserMessage = CodeParser.CheckCodeForErrorsAndWriteToMemory(codeToExecute);
-            Chip.ProgramCounter = 0;
-
-            if (parserMessage != "Success")
+            if (Chip.GetMemory(Chip.ProgramCounter) == 118) // HLT
             {
-                MessageBox.Show(parserMessage);
+                Chip.ProgramCounter++;
                 return;
-            }*/
+            }
 
-            //for (int i = 0; i < ogProgramCounter; i++)
-            //for (int i = 0; i < CodeParser.TotalInstructionsLoaded; i++)
-            //for (int i = 0; i < CodeParser.programCounterForCurrentStepRow; i++)
-            //while (Chip.ProgramCounter < CodeParser.programCounterForCurrentStepRow)
-            //{
-                if (Chip.IsAddressDefineByte(Chip.ProgramCounter))
-                {
-                    Chip.ProgramCounter++;
-                    return;
-                    //continue;
-                }
+            string executerMessage = InstrExecuter.ExecuteFromMemoryOnCounter();
 
-                if (Chip.GetMemory(Chip.ProgramCounter) == 118) // HLT
-                {
-                    Chip.ProgramCounter++;
-                    return;
-                    //break;
-                }
-
-                string executerMessage = CodeParser.ExecuteFromMemoryOnCounter();
-
-                if (executerMessage != "Success")
-                {
-                    MessageBox.Show(executerMessage);
-                    return;
-                }
-            //}
+            if (executerMessage != "Success")
+            {
+                MessageBox.Show(executerMessage);
+                return;
+            }
 
             UpdateRegWindows();
             UpdateConBitWindows();
@@ -370,16 +294,6 @@ namespace _8080
             Chip.SetConditionalBit("ParityBit", false);
         }
 
-        private void ClearProgramCounterValue()
-        {
-            Chip.ProgramCounter = 0;
-        }
-
-        private void ClearStackPointerValue()
-        {
-            Chip.StackPointer = 65535;
-        }
-
         private void ClearMemoryValues()
         {
             for (int i = 0; i < 65535; i++)
@@ -429,21 +343,6 @@ namespace _8080
             memoryWindowAddressStart = Int32.Parse(fullAddress, System.Globalization.NumberStyles.HexNumber);
             memoryWindowRowHeaderStart = rowAddress_Int;
             UpdateMemoryWindow();
-        }
-
-        private void ClearCurrentStepRowValue()
-        {
-            instructionsToBeExecuted = -1;
-        }
-
-        //private void ClearTotalInstructionsLoaded()
-        //{
-        //    CodeParser.TotalInstructionsLoaded = 0;
-        //}
-
-        private void RemoveStepArrow()
-        {
-            CodeBox.Text = CodeBox.Text.Replace("-> ", "");
         }
     }
 }

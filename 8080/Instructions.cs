@@ -5,7 +5,7 @@ using System.Collections;
 
 namespace _8080
 {
-    class Instructions
+    public class Instructions
     {
         private static Dictionary<string, string> opLabPartOrFullCode = new Dictionary<string, string>
         {
@@ -81,6 +81,7 @@ namespace _8080
             { "LDA", "11" },
             { "MOV", "" },
             { "MVI", "" },
+            { "LXI", "" },
             { "DB", "" },
             { "DW", "" },
             { "DS", "" }
@@ -166,14 +167,6 @@ namespace _8080
             return false;
         }
 
-        public static bool IsOperandValid(string operand)
-        {
-            if (Chip.DoesRegisterExist(operand) || operand == "M")
-                return true;
-            
-            return false;
-        }
-
         private static Dictionary<string, int> labelMemoryAddress = new Dictionary<string, int>();
 
         public static string SetLabelMemoryAddress(string label, int memoryAddress)
@@ -196,6 +189,32 @@ namespace _8080
         public static void ClearLabelMemoryAddress()
         {
             labelMemoryAddress.Clear();
+        }
+
+        public static string CMC_Instr()
+        {
+            if (Chip.GetConditionalBit("CarryBit") == false)
+                Chip.SetConditionalBit("CarryBit", true);
+            else
+                Chip.SetConditionalBit("CarryBit", false);
+
+            return "Success";
+        }
+
+        public static string STC_Instr()
+        {
+            if (Chip.GetConditionalBit("CarryBit") == false)
+                Chip.SetConditionalBit("CarryBit", true);
+
+            return "Success";
+        }
+
+        public static string CMA_Instr()
+        {
+            BitArray regA = Instructions.ConvertIntTo8BitArray(Chip.GetRegister("A"));
+            BitArray regAOnesComplement = Instructions.ConvertBitArrayToOnesComplement(regA);
+            Chip.SetRegister("A", Instructions.ConvertBitArrayToInt(regAOnesComplement));
+            return "Success";
         }
 
         public static string MOV_Instr(string operand1, string operand2)
@@ -251,56 +270,14 @@ namespace _8080
 
                 return false;
             }
-            /*else if (operand.EndsWith("D"))
-            {
-                operand = operand[..^1];
-
-                if (Int32.TryParse(operand, out int value))
-                    return true;
-
-                return false;
-            }
-            else if (Int32.TryParse(operand, out int value))
-                return true;
-            // Add other checks for bites etc*/
             else
                 return false;
         }
-
-        /*public static int ConvertValueOperandToDecimalTwosComplement(string operand, ref string errorMessage)
-        {
-            if (operand.EndsWith("H"))
-                return ConvertHexToDecimalTwosComplement(operand[..^1], ref errorMessage);
-            else if (operand.EndsWith("D"))
-            {
-                operand = operand[..^1];
-
-                if (Int32.TryParse(operand, out int value))
-                    return value;
-
-                return -1;
-            }
-            else if (Int32.TryParse(operand, out int value))
-                return value; // Add other formats like bites etc
-            else
-                return -1;
-        }*/
 
         public static int ConvertValueOperandToDecimal(string operand, ref string errorMessage)
         {
             if (operand.EndsWith("H"))
                 return ConvertHexToDecimal(operand[..^1], ref errorMessage);
-            /*else if (operand.EndsWith("D"))
-            {
-                operand = operand[..^1];
-
-                if (Int32.TryParse(operand, out int value))
-                    return value;
-
-                return -1;
-            }
-            else if (Int32.TryParse(operand, out int value))
-                return value; // Add other formats like bites etc*/
             else
             {
                 errorMessage = "ERROR: Invalid format";
@@ -376,35 +353,25 @@ namespace _8080
 
         public static string XCHG_Instr()
         {
-            int tempRegD = Chip.GetRegister("D");
-            int tempRegE = Chip.GetRegister("E");
+            int temp = Chip.GetRegister("H");
+            Chip.SetRegister("H", Chip.GetRegister("D"));
+            Chip.SetRegister("D", temp);
 
-            Chip.SetRegister("D", Chip.GetRegister("H"));
-            Chip.SetRegister("E", Chip.GetRegister("L"));
-            Chip.SetRegister("H", tempRegD);
-            Chip.SetRegister("L", tempRegE);
+            temp = Chip.GetRegister("L");
+            Chip.SetRegister("L", Chip.GetRegister("E"));
+            Chip.SetRegister("E", temp);
             return "Success";
         }
 
-        public static string ADD_Instr(string operand)
+        public static string XTHL_Instr()
         {
-            int value = -1;
+            int temp = Chip.GetRegister("H");
+            Chip.SetRegister("H", Chip.GetMemory(Chip.StackPointer + 1));
+            Chip.SetMemory(Chip.StackPointer + 1, temp);
 
-            if (Chip.DoesRegisterExist(operand))
-                value = Chip.GetRegister(operand);
-            else
-            {
-                int mAddress = GetM();
-                value = Chip.GetMemory(mAddress);
-            }
-
-            int ogRegA = Chip.GetRegister("A");
-            Chip.SetRegister("A", Chip.GetRegister("A") + value);
-
-            if (!IsValueInOneByteRange(Chip.GetRegister("A")))
-                Chip.SetRegister("A", NormalizeToOneByteValue(Chip.GetRegister("A")));
-
-            SetConditionalBits("ADD", ogRegA, value, Chip.GetRegister("A"));
+            temp = Chip.GetRegister("L");
+            Chip.SetRegister("L", Chip.GetMemory(Chip.StackPointer));
+            Chip.SetMemory(Chip.StackPointer, temp);
             return "Success";
         }
 
@@ -414,29 +381,15 @@ namespace _8080
                 value = NormalizeToOneByteValue(value);
 
             int ogRegA = Chip.GetRegister("A");
-            Chip.SetRegister("A", Chip.GetRegister("A") + value);
+            int result = Chip.GetRegister("A") + value;
 
-            if (!IsValueInOneByteRange(Chip.GetRegister("A")))
-                Chip.SetRegister("A", NormalizeToOneByteValue(Chip.GetRegister("A")));
+            if (!IsValueInOneByteRange(result))
+                result = NormalizeToOneByteValue(result);
 
+            Chip.SetRegister("A", result);
             SetConditionalBits("ADD", ogRegA, value, Chip.GetRegister("A"));
             return "Success";
         }
-
-        /*public static string ADI_Instr(int value)
-        {
-            if (!IsValueInOneByteRangeTwosComplement(value))
-                value = NormalizeOneByteValueTwosComplement(value);
-
-            int ogRegA = Chip.registers["A"];
-            Chip.registers["A"] += value;
-
-            if (!IsValueInOneByteRangeTwosComplement(Chip.registers["A"]))
-                Chip.registers["A"] = NormalizeOneByteValueTwosComplement(Chip.registers["A"]);
-
-            SetConditionalBits("ADD", ogRegA, value, Chip.registers["A"]);
-            return "Success";
-        }*/
 
         public static string INR_Instr(string reg)
         {
@@ -552,80 +505,21 @@ namespace _8080
             return "Success";
         }
 
-        public static string SUB_Instr(string operand)
-        {
-            int value = -1;
-
-            if (Chip.DoesRegisterExist(operand))
-                value = Chip.GetRegister(operand);
-            else
-            {
-                int mAddress = GetM();
-                value = Chip.GetMemory(mAddress);
-            }
-
-            int ogRegA = Chip.GetRegister("A");
-            Chip.SetRegister("A", value);
-
-            if (!IsValueInOneByteRange(Chip.GetRegister("A")))
-                Chip.SetRegister("A", NormalizeToOneByteValue(Chip.GetRegister("A")));
-
-            SetConditionalBits("SUB", ogRegA, value, Chip.GetRegister("A"));
-            return "Success";
-        }
-
         public static string SUI_Instr(int value)
         {
             if (!IsValueInOneByteRange(value))
                 value = NormalizeToOneByteValue(value);
 
             int ogRegA = Chip.GetRegister("A");
-            Chip.SetRegister("A", Chip.GetRegister("A") - value);
+            int result = Chip.GetRegister("A") - value;
 
-            if (!IsValueInOneByteRange(Chip.GetRegister("A")))
-                Chip.SetRegister("A", NormalizeToOneByteValue(Chip.GetRegister("A")));
+            if (!IsValueInOneByteRange(result))
+                result = NormalizeToOneByteValue(result);
 
+            Chip.SetRegister("A", result);
             SetConditionalBits("SUB", ogRegA, value, Chip.GetRegister("A"));
             return "Success";
         }
-
-        /*public static string SUI_Instr(int value)
-        {
-            if (!IsValueInOneByteRangeTwosComplement(value))
-                value = NormalizeOneByteValueTwosComplement(value);
-
-            int ogRegA = Chip.registers["A"];
-            Chip.registers["A"] -= value;
-
-            if (!IsValueInOneByteRangeTwosComplement(Chip.registers["A"]))
-                Chip.registers["A"] = NormalizeOneByteValueTwosComplement(Chip.registers["A"]);
-
-            SetConditionalBits("SUB", ogRegA, value, Chip.registers["A"]);
-            return "Success";
-        }*/
-
-        /*public static string ANA_Instr(string reg)
-        {
-            int value = -1;
-
-            if (Chip.registers.ContainsKey(reg))
-                value = Chip.registers[reg];
-            else
-            {
-                int mAddress = GetM();
-                value = Chip.memory[mAddress];
-            }
-
-            BitArray regAArray = ConvertIntTo8BitArray(Chip.registers["A"]);
-            BitArray valueArray = ConvertIntTo8BitArray(value);
-            BitArray andResult = LogicAndBitArrays(regAArray, valueArray);
-            int andResultInt = ConvertBitArrayToInt(andResult);
-            int ogRegA = Chip.registers["A"];
-
-            Chip.registers["A"] = andResultInt;
-            SetConditionalBits("AND", ogRegA, value, Chip.registers["A"]);
-            return "Success";
-        }*/
 
         public static string ANI_Instr(int value)
         {
@@ -640,29 +534,6 @@ namespace _8080
             return "Success";
         }
 
-        /*public static string XRA_Instr(string reg)
-        {
-            int value = -1;
-
-            if (Chip.registers.ContainsKey(reg))
-                value = Chip.registers[reg];
-            else
-            {
-                int mAddress = GetM();
-                value = Chip.memory[mAddress];
-            }
-
-            BitArray regAArray = ConvertIntTo8BitArray(Chip.registers["A"]);
-            BitArray valueArray = ConvertIntTo8BitArray(value);
-            BitArray andResult = LogicXORBitArrays(regAArray, valueArray);
-            int andResultInt = ConvertBitArrayToInt(andResult);
-            int ogRegA = Chip.registers["A"];
-
-            Chip.registers["A"] = andResultInt;
-            SetConditionalBits("XOR", ogRegA, value, Chip.registers["A"]);
-            return "Success";
-        }*/
-
         public static string XRI_Instr(int value)
         {
             BitArray regAArray = ConvertIntTo8BitArray(Chip.GetRegister("A"));
@@ -676,29 +547,6 @@ namespace _8080
             return "Success";
         }
 
-        /*public static string ORA_Instr(string reg)
-        {
-            int value = -1;
-
-            if (Chip.registers.ContainsKey(reg))
-                value = Chip.registers[reg];
-            else
-            {
-                int mAddress = GetM();
-                value = Chip.memory[mAddress];
-            }
-
-            BitArray regAArray = ConvertIntTo8BitArray(Chip.registers["A"]);
-            BitArray valueArray = ConvertIntTo8BitArray(value);
-            BitArray andResult = LogicORBitArrays(regAArray, valueArray);
-            int andResultInt = ConvertBitArrayToInt(andResult);
-            int ogRegA = Chip.registers["A"];
-
-            Chip.registers["A"] = andResultInt;
-            SetConditionalBits("OR", ogRegA, value, Chip.registers["A"]);
-            return "Success";
-        }*/
-
         public static string ORI_Instr(int value)
         {
             BitArray regAArray = ConvertIntTo8BitArray(Chip.GetRegister("A"));
@@ -711,16 +559,6 @@ namespace _8080
             SetConditionalBits("OR", ogRegA, value, Chip.GetRegister("A"));
             return "Success";
         }
-
-        /*public static string CMP_Instr(string reg)
-        {
-            int ogRegA = Chip.registers["A"];
-            int value = Chip.registers[reg];
-            SUB_Instr(reg);
-            Chip.registers["A"] = ogRegA;
-            SetConditionalBits("SUB", ogRegA, value, Chip.registers["A"]);
-            return "Success";
-        }*/
 
         public static string CPI_Instr(int value)
         {
@@ -887,38 +725,26 @@ namespace _8080
 
         public static string INX_Instr(string reg)
         {
-            int regPairValue = -1;
-            string regNext = string.Empty;
-
             if (reg == "SP")
             {
-                if (Chip.StackPointer == 0)
-                    return "ERROR: StackPointer address is too low for INX operation";
+                int stackValue = Chip.StackPointer + 1;
 
-                int spHighValue = Chip.GetMemory(Chip.StackPointer);
-                int spLowValue = Chip.GetMemory(Chip.StackPointer - 1);
-                regPairValue = Concat8BitIntValues(spHighValue, spLowValue);
+                if (!IsValueInTwoBytesRange(stackValue))
+                    stackValue = NormalizeTwoByteValue(stackValue);
+
+                Chip.StackPointer = stackValue;
             }
             else
             {
-                regNext = Chip.GetNextRegister(reg);
-                regPairValue = ConcatRegisters(reg, regNext);
-            }
+                string regNext = Chip.GetNextRegister(reg);
+                int regPairValue = ConcatRegisters(reg, regNext);
+                int result = regPairValue + 1;
 
-            int result = regPairValue + 1;
+                if (!IsValueInTwoBytesRange(result))
+                    result = NormalizeTwoByteValue(result);
 
-            if (!IsValueInTwoBytesRange(result))
-                result = NormalizeTwoByteValue(result);
+                int[] highLowBytes = Extract8BitHighAndLowValues(result);
 
-            int[] highLowBytes = Extract8BitHighAndLowValues(result);
-
-            if (reg == "SP")
-            {
-                Chip.SetMemory(Chip.StackPointer, highLowBytes[0]);
-                Chip.SetMemory(Chip.StackPointer - 1, highLowBytes[1]);
-            }
-            else
-            {
                 Chip.SetRegister(reg, highLowBytes[0]);
                 Chip.SetRegister(regNext, highLowBytes[1]);
             }
@@ -927,38 +753,26 @@ namespace _8080
         }
         public static string DCX_Instr(string reg)
         {
-            int regPairValue = -1;
-            string regNext = string.Empty;
-
             if (reg == "SP")
             {
-                if (Chip.StackPointer == 0)
-                    return "ERROR: StackPointer address is too low for DCX operation";
+                int stackValue = Chip.StackPointer - 1;
 
-                int spHighValue = Chip.GetMemory(Chip.StackPointer);
-                int spLowValue = Chip.GetMemory(Chip.StackPointer - 1);
-                regPairValue = Concat8BitIntValues(spHighValue, spLowValue);
+                if (!IsValueInTwoBytesRange(stackValue))
+                    stackValue = NormalizeTwoByteValue(stackValue);
+
+                Chip.StackPointer = stackValue;
             }
             else
             {
-                regNext = Chip.GetNextRegister(reg);
-                regPairValue = ConcatRegisters(reg, regNext);
-            }
+                string regNext = Chip.GetNextRegister(reg);
+                int regPairValue = ConcatRegisters(reg, regNext);
+                int result = regPairValue - 1;
 
-            int result = regPairValue - 1;
+                if (!IsValueInTwoBytesRange(result))
+                    result = NormalizeTwoByteValue(result);
 
-            if (!IsValueInTwoBytesRange(result))
-                result = NormalizeTwoByteValue(result);
+                int[] highLowBytes = Extract8BitHighAndLowValues(result);
 
-            int[] highLowBytes = Extract8BitHighAndLowValues(result);
-
-            if (reg == "SP")
-            {
-                Chip.SetMemory(Chip.StackPointer, highLowBytes[0]);
-                Chip.SetMemory(Chip.StackPointer - 1, highLowBytes[1]);
-            }
-            else
-            {
                 Chip.SetRegister(reg, highLowBytes[0]);
                 Chip.SetRegister(regNext, highLowBytes[1]);
             }
@@ -996,44 +810,10 @@ namespace _8080
                 return new string[] { "", "" };
             }
 
-            string operand1 = operands[0];
-            string operand2 = operands[1];
-
-            //operand1 = CodeParser.RemoveSpacesFromBeginning(operand1);
-            //operand1 = CodeParser.RemoveSpacesFromEnd(operand1);
-            //operand2 = CodeParser.RemoveSpacesFromBeginning(operand2);
-            //operand2 = CodeParser.RemoveSpacesFromEnd(operand2);
-
-            operand1 = operand1.Trim();
-            operand2 = operand2.Trim();
-
+            string operand1 = operands[0].Trim();
+            string operand2 = operands[1].Trim();
             return new string[] { operand1, operand2 };
         }
-
-        private static string GetNextDictKey(string key, Dictionary<string, int> dict)
-        {
-            for (int i = 0; i < dict.Count; i++)
-            {
-                if (dict.ElementAt(i).Key == key && i != dict.Count - 1)
-                    return dict.ElementAt(++i).Key;
-            }
-
-            return dict.ElementAt(0).Key;
-        }
-
-        /*private static int ConvertHexToDecimalTwosComplement(string hex, ref string errorMessage)
-        {
-            if (Int32.TryParse(hex.ToString(), System.Globalization.NumberStyles.HexNumber, null, out int value))
-            {
-                if (!IsValueInOneByteRangeTwosComplement(value))
-                    value = NormalizeOneByteValueTwosComplement(value);
-
-                return value;
-            }
-
-            errorMessage = "ERROR: Invalid hex value";
-            return -1;
-        }*/
 
         private static int ConvertHexToDecimal(string hex, ref string errorMessage)
         {
@@ -1060,14 +840,6 @@ namespace _8080
             return true;
         }
 
-        /*public static bool IsValueInOneByteRangeTwosComplement(int value)
-        {
-            if (value < -128 || value > 127)
-                return false;
-
-            return true;
-        }*/
-
         public static int NormalizeToOneByteValue(int value)
         {
             if (value < 0)
@@ -1075,14 +847,6 @@ namespace _8080
 
             return value -= 256;
         }
-
-        /*public static int NormalizeOneByteValueTwosComplement(int value)
-        {
-            if (value < -128)
-                return value += 256;
-
-            return value -= 256;
-        }*/
 
         public static int NormalizeTwoByteValue(int value)
         {
@@ -1256,19 +1020,6 @@ namespace _8080
             return array[0];
         }
 
-        public static void ReverseBitArray(BitArray array)
-        {
-            int length = array.Length;
-            int mid = (length / 2);
-
-            for (int i = 0; i < mid; i++)
-            {
-                bool bit = array[i];
-                array[i] = array[length - i - 1];
-                array[length - i - 1] = bit;
-            }
-        }
-
         public static string ConvertIntTo8BinaryString(int value)
         {
             bool isNegative = false;
@@ -1367,21 +1118,6 @@ namespace _8080
             {
                 copyToArray[i] = copyFromArray[i];
             }
-        }
-
-        private static BitArray ConcatBitArrays(BitArray upperBitsArray, BitArray lowerBitsArray)
-        {
-            BitArray concatArray = new BitArray(upperBitsArray.Length + lowerBitsArray.Length);
-
-            for (int i = 0; i < concatArray.Length; i++)
-            {
-                if (i <= lowerBitsArray.Length)
-                    concatArray[i] = upperBitsArray[i];
-                else
-                    concatArray[i] = lowerBitsArray[i];
-            }
-
-            return concatArray;
         }
 
         private static int ConcatRegisters(string regUpperBits, string regLowerBits)
