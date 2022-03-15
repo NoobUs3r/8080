@@ -189,5 +189,7 @@ namespace _8080
         {
             return regCode.ContainsKey(reg);
         }
+
+        public static bool IsHalted { get; set; }
     }
 }

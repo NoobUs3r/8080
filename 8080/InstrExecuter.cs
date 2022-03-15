@@ -43,6 +43,12 @@
                 Chip.ProgramCounter++;
                 return "Success";
             }
+            else if (opBinaryString == "01110110") // HLT
+            {
+                Chip.ProgramCounter++;
+                Chip.IsHalted = true;
+                return "Success";
+            }
             else if (opBinaryString.StartsWith("01"))
             {
                 string operand1Code = opBinaryString.Substring(2, 3);

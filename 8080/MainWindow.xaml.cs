@@ -4,9 +4,6 @@ using System.Windows;
 
 namespace _8080
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
         public MainWindow()
@@ -61,10 +58,11 @@ namespace _8080
             if (parserMessage != "Success")
             {
                 MessageBox.Show(parserMessage);
+                ClearButton_Click(sender, e);
                 return;
             }
 
-            while (Chip.ProgramCounter < 65535)
+            while (Chip.ProgramCounter < 65535 && !Chip.IsHalted)
             {
                 if (Chip.IsAddressDefineByte(Chip.ProgramCounter))
                 {
@@ -72,17 +70,13 @@ namespace _8080
                     continue;
                 }
 
-                if (Chip.GetMemory(Chip.ProgramCounter) == 118) // HLT
-                {
-                    Chip.ProgramCounter++;
-                    break;
-                }
-
                 string executerMessage = InstrExecuter.ExecuteFromMemoryOnCounter();
+                instructionsToBeExecuted++;
 
                 if (executerMessage != "Success")
                 {
                     MessageBox.Show(executerMessage);
+                    ClearButton_Click(sender, e);
                     return;
                 }
             }
@@ -109,6 +103,7 @@ namespace _8080
             Instructions.ClearLabelMemoryAddress();
             instructionsToBeExecuted = 0;
             areInstructionsWrittenToMemory = false;
+            Chip.IsHalted = false;
         }
 
         int instructionsToBeExecuted = 0;
@@ -116,7 +111,7 @@ namespace _8080
 
         public void NextStepButton_Click(object sender, RoutedEventArgs e)
         {
-            if (instructionsToBeExecuted == 65535)
+            if (instructionsToBeExecuted == 65535 || Chip.IsHalted)
                 return;
 
             instructionsToBeExecuted++;
@@ -130,6 +125,7 @@ namespace _8080
                 if (parserMessage != "Success")
                 {
                     MessageBox.Show(parserMessage);
+                    ClearButton_Click(sender, e);
                     return;
                 }
             }
@@ -153,11 +149,15 @@ namespace _8080
             if (parserMessage != "Success")
             {
                 MessageBox.Show(parserMessage);
+                ClearButton_Click(sender, e);
                 return;
             }
 
             for (int i = 0; i < instructionsToBeExecuted; i++)
             {
+                if (Chip.IsHalted)
+                    break;
+
                 ExecuteCodeUntilStepRow(sender, e);
             }
         }
@@ -170,17 +170,12 @@ namespace _8080
                 return;
             }
 
-            if (Chip.GetMemory(Chip.ProgramCounter) == 118) // HLT
-            {
-                Chip.ProgramCounter++;
-                return;
-            }
-
             string executerMessage = InstrExecuter.ExecuteFromMemoryOnCounter();
 
             if (executerMessage != "Success")
             {
                 MessageBox.Show(executerMessage);
+                ClearButton_Click(sender, e);
                 return;
             }
 
@@ -343,6 +338,13 @@ namespace _8080
             memoryWindowAddressStart = Int32.Parse(fullAddress, System.Globalization.NumberStyles.HexNumber);
             memoryWindowRowHeaderStart = rowAddress_Int;
             UpdateMemoryWindow();
+        }
+
+        private void CodeSamplesList_DropDownClosed(object sender, EventArgs e)
+        {
+            string sampleName = CodeSamplesList.Text;
+            CodeBox.Text = CodeSamples.GetCodeSample(sampleName);
+            ClearButton_Click(sender, new RoutedEventArgs());
         }
     }
 }
